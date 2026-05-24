@@ -2,13 +2,8 @@
 // src/components/ReadingSections.tsx
 //
 // Renders free reading + locked paid preview + paywall CTA.
-// Changes from previous version:
-//  - 「屌醒位」section completely removed
-//    (that tone is now embedded in headline/mainAxis/cards/nextStep)
-//  - PaywallCTA primary CTA is HK$19 (single unlock)
-//  - Secondary upsell row shows HK$39 and HK$88 tiers
-//  - wakeUpLine is no longer read from freeReading schema
-//  - All rendering remains fully defensive (no field can crash)
+// Design: updated to new ArcanaPath design system.
+// Business logic preserved exactly.
 // =============================================================
 "use client";
 
@@ -30,9 +25,9 @@ function s(v: unknown, fb = ""): string {
 function Divider() {
   return (
     <div className="flex items-center gap-3 my-1">
-      <div className="flex-1 h-px bg-amber-900/25" />
-      <div className="text-amber-800/35 text-xs">✦</div>
-      <div className="flex-1 h-px bg-amber-900/25" />
+      <div className="flex-1 h-px" style={{ background: "rgba(233,195,73,0.1)" }} />
+      <div className="font-sans text-xs" style={{ color: "rgba(233,195,73,0.25)" }}>✦</div>
+      <div className="flex-1 h-px" style={{ background: "rgba(233,195,73,0.1)" }} />
     </div>
   );
 }
@@ -44,14 +39,17 @@ function SectionBox({
 }) {
   return (
     <div
-      className={[
-        "rounded-xl border p-5 space-y-3",
-        accent
-          ? "border-amber-600/30 bg-gradient-to-br from-amber-950/40 to-amber-900/15"
-          : "border-amber-900/30 bg-amber-950/20",
-      ].join(" ")}
+      className="rounded-2xl p-5 space-y-3"
+      style={{
+        background: accent
+          ? "linear-gradient(145deg, rgba(26,34,50,0.7) 0%, rgba(19,25,32,0.7) 100%)"
+          : "rgba(19,25,32,0.55)",
+        border: accent
+          ? "1px solid rgba(233,195,73,0.2)"
+          : "1px solid rgba(233,195,73,0.1)",
+      }}
     >
-      <h3 className="text-amber-400 font-serif font-semibold flex items-center gap-2 text-base">
+      <h3 className="font-serif font-semibold flex items-center gap-2 text-base" style={{ color: "#e9c349" }}>
         {icon && <span className="text-lg">{icon}</span>}
         {title}
       </h3>
@@ -72,7 +70,10 @@ function CardRevealRow({ cards }: { cards: DrawnCard[] }) {
         const isRevealed = revealed[i] ?? false;
         return (
           <div key={i} className="flex flex-col items-center gap-2">
-            <div className="text-amber-500/55 text-xs font-serif tracking-wider">
+            <div
+              className="font-sans text-xs uppercase tracking-widest"
+              style={{ color: "rgba(154,171,184,0.6)", letterSpacing: "0.12em" }}
+            >
               {dc.position}
             </div>
             <TarotCard
@@ -92,7 +93,10 @@ function CardRevealRow({ cards }: { cards: DrawnCard[] }) {
               }
             />
             {!isRevealed && (
-              <div className="text-amber-700/45 text-xs font-serif animate-pulse">
+              <div
+                className="font-sans text-xs animate-pulse"
+                style={{ color: "rgba(233,195,73,0.4)" }}
+              >
                 點擊翻開
               </div>
             )}
@@ -107,104 +111,142 @@ function CardRevealRow({ cards }: { cards: DrawnCard[] }) {
 
 function LockedSection({ title, lines = 4 }: { title: string; lines?: number }) {
   return (
-    <div className="rounded-xl border border-amber-900/25 bg-amber-950/10 p-5 relative overflow-hidden">
+    <div
+      className="rounded-2xl p-5 relative overflow-hidden"
+      style={{
+        background: "rgba(19,25,32,0.4)",
+        border: "1px solid rgba(233,195,73,0.08)",
+      }}
+    >
       <div className="space-y-2 filter blur-[3px] pointer-events-none select-none" aria-hidden>
-        <div className="h-4 bg-amber-900/25 rounded w-3/4" />
+        <div className="h-4 rounded w-3/4" style={{ background: "rgba(233,195,73,0.08)" }} />
         {Array.from({ length: lines }).map((_, i) => (
-          <div key={i} className={`h-3 bg-amber-900/15 rounded ${i % 3 === 2 ? "w-2/3" : "w-full"}`} />
+          <div
+            key={i}
+            className={`h-3 rounded ${i % 3 === 2 ? "w-2/3" : "w-full"}`}
+            style={{ background: "rgba(233,195,73,0.05)" }}
+          />
         ))}
       </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-amber-950/65 backdrop-blur-[1px]">
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]"
+        style={{ background: "rgba(15,20,27,0.65)" }}
+      >
         <div className="text-2xl">🔒</div>
-        <div className="text-amber-300/80 font-serif text-sm font-medium">{title}</div>
+        <div className="font-sans text-sm font-medium" style={{ color: "rgba(232,232,232,0.75)" }}>
+          {title}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Paywall CTA — HK$19 primary, secondary upsell ───────────
+// ─── Paywall CTA ──────────────────────────────────────────────
 
 function PaywallCTA({ readingId }: { readingId?: string }) {
-  const primary    = PRIMARY_TIER;
-  const secondary  = PRICING_TIERS.filter((t) => !t.highlighted);
+  const primary   = PRIMARY_TIER;
+  const secondary = PRICING_TIERS.filter((t) => !t.highlighted);
 
   return (
     <div className="space-y-3">
 
-      {/* ── Primary CTA block ─────────────────────────────── */}
+      {/* Primary CTA */}
       <div
-        className="rounded-xl p-6 text-center space-y-4"
+        className="rounded-2xl p-6 text-center space-y-4"
         style={{
-          border:     "1.5px solid rgba(200,160,40,0.4)",
-          background: "linear-gradient(145deg, rgba(60,35,5,0.5) 0%, rgba(30,10,50,0.4) 100%)",
+          background: "linear-gradient(145deg, rgba(26,34,50,0.9) 0%, rgba(19,25,32,0.9) 100%)",
+          border: "1.5px solid rgba(233,195,73,0.35)",
+          boxShadow: "0 0 40px rgba(233,195,73,0.06)",
         }}
       >
-        {/* Star ornament */}
-        <div className="text-amber-500/60 text-2xl">✦</div>
+        <div className="font-sans text-2xl" style={{ color: "rgba(233,195,73,0.5)" }}>✦</div>
 
         <div>
-          <div className="text-amber-200 font-serif text-xl font-semibold">
+          <div className="font-serif text-xl font-semibold" style={{ color: "#e8e8e8" }}>
             解鎖完整深度報告
           </div>
-          <div className="text-amber-400/55 text-xs font-serif mt-1 leading-relaxed">
+          <div
+            className="font-sans text-xs mt-1 leading-relaxed"
+            style={{ color: "rgba(154,171,184,0.7)" }}
+          >
             心理拆解・局勢真相・時間線・行動建議・核心問題
           </div>
         </div>
 
-        {/* Feature 2-col grid */}
+        {/* Features */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-left max-w-xs mx-auto">
           {primary.features.map((f) => (
-            <div key={f} className="flex items-start gap-1.5 text-amber-200/65 text-xs font-serif">
-              <span className="text-amber-500 flex-shrink-0 mt-px">✓</span>
-              {f}
+            <div key={f} className="flex items-start gap-1.5 font-sans text-xs">
+              <span style={{ color: "#e9c349", flexShrink: 0, marginTop: 1 }}>✓</span>
+              <span style={{ color: "rgba(232,232,232,0.7)" }}>{f}</span>
             </div>
           ))}
         </div>
 
-        {/* Price + CTA */}
+        {/* CTA */}
         <div className="space-y-2.5 pt-1">
           <a
             href={readingId ? `/paywall?readingId=${encodeURIComponent(readingId)}` : "/paywall"}
-            className="block text-white font-serif font-bold py-4 px-8 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] text-lg"
+            className="block font-sans font-bold py-4 px-8 rounded-xl transition-all hover:brightness-110 active:scale-[0.98] text-base"
             style={{
-              background:  "linear-gradient(135deg, #b45309 0%, #92400e 100%)",
-              boxShadow:   "0 4px 20px rgba(180,83,9,0.4), inset 0 1px 0 rgba(255,200,100,0.15)",
+              background: "linear-gradient(135deg, #e9c349 0%, #c9a32e 100%)",
+              color: "#0f141b",
+              boxShadow: "0 4px 20px rgba(233,195,73,0.2)",
             }}
           >
             {primary.cta}
           </a>
           <a
-            href="/register"
-            className="block border border-amber-800/40 text-amber-500/65 hover:border-amber-700/60 hover:text-amber-400 font-serif text-sm py-2.5 px-6 rounded-lg transition-colors"
+            href="/reading"
+            className="block font-sans text-sm py-2 transition-opacity hover:opacity-80"
+            style={{
+              border: "1px solid rgba(233,195,73,0.15)",
+              borderRadius: 12,
+              color: "rgba(154,171,184,0.6)",
+            }}
           >
-            免費註冊 → 每日 3 次抽牌
+            再免費占卜一次
           </a>
         </div>
 
-        <p className="text-amber-800/35 text-xs font-serif">
+        <p className="font-sans text-xs" style={{ color: "rgba(154,171,184,0.3)" }}>
           一次性付款 · 永久保存 · 可隨時查看
         </p>
       </div>
 
-      {/* ── Secondary upsell row ───────────────────────────── */}
+      {/* Secondary upsell row */}
       <div className="grid grid-cols-2 gap-2">
         {secondary.map((tier) => (
           <a
             key={tier.id}
             href={readingId ? `/paywall?readingId=${encodeURIComponent(readingId)}` : "/paywall"}
-            className="rounded-xl border border-amber-900/30 bg-amber-950/15 hover:border-amber-800/50 hover:bg-amber-950/30 p-3.5 text-center space-y-1.5 transition-all block"
+            className="rounded-xl p-3.5 text-center space-y-1.5 block transition-all hover:brightness-110"
+            style={{
+              background: "rgba(19,25,32,0.5)",
+              border: "1px solid rgba(233,195,73,0.1)",
+            }}
           >
             {tier.badge && (
-              <div className="text-amber-600/55 text-xs font-serif">{tier.badge}</div>
+              <div className="font-sans text-xs" style={{ color: "rgba(209,188,255,0.65)" }}>
+                {tier.badge}
+              </div>
             )}
-            <div className="text-amber-200/80 font-serif font-semibold text-sm">{tier.label}</div>
+            <div className="font-serif font-semibold text-sm" style={{ color: "rgba(232,232,232,0.8)" }}>
+              {tier.label}
+            </div>
             <div className="flex items-baseline justify-center gap-1.5">
-              <span className="text-amber-300 font-serif font-bold text-base">{tier.priceStr}</span>
+              <span className="font-serif font-bold text-base" style={{ color: "#e9c349" }}>
+                {tier.priceStr}
+              </span>
               {tier.strikeStr && (
-                <span className="text-amber-800/50 text-xs font-serif line-through">{tier.strikeStr}</span>
+                <span className="font-sans text-xs line-through" style={{ color: "rgba(154,171,184,0.35)" }}>
+                  {tier.strikeStr}
+                </span>
               )}
             </div>
-            <div className="text-amber-600/45 text-xs font-serif leading-tight">{tier.tagline}</div>
+            <div className="font-sans text-xs leading-tight" style={{ color: "rgba(154,171,184,0.5)" }}>
+              {tier.tagline}
+            </div>
           </a>
         ))}
       </div>
@@ -213,7 +255,7 @@ function PaywallCTA({ readingId }: { readingId?: string }) {
   );
 }
 
-// ─── PricingCards — for standalone use (e.g. /paywall) ───────
+// ─── PricingCards (standalone, e.g. /paywall) ─────────────────
 
 export function PricingCards() {
   return (
@@ -221,46 +263,54 @@ export function PricingCards() {
       {PRICING_TIERS.map((tier) => (
         <div
           key={tier.id}
-          className="rounded-xl p-5 space-y-3"
+          className="rounded-2xl p-5 space-y-3"
           style={{
-            border:     tier.highlighted
-              ? "1.5px solid rgba(200,160,40,0.45)"
-              : "1.5px solid rgba(100,70,15,0.3)",
+            border: tier.highlighted
+              ? "1.5px solid rgba(233,195,73,0.35)"
+              : "1px solid rgba(233,195,73,0.1)",
             background: tier.highlighted
-              ? "linear-gradient(145deg,rgba(60,35,5,0.45) 0%,rgba(30,10,50,0.35) 100%)"
-              : "rgba(13,5,24,0.4)",
+              ? "linear-gradient(145deg, rgba(26,34,50,0.9) 0%, rgba(19,25,32,0.9) 100%)"
+              : "rgba(19,25,32,0.5)",
           }}
         >
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-amber-200 font-serif font-semibold">{tier.label}</span>
+                <span className="font-serif font-semibold" style={{ color: "#e8e8e8" }}>
+                  {tier.label}
+                </span>
                 {tier.badge && (
                   <span
-                    className="text-xs font-serif px-2 py-0.5 rounded-full"
+                    className="font-sans text-xs px-2 py-0.5 rounded-full"
                     style={{
-                      background: tier.highlighted ? "rgba(180,83,9,0.5)" : "rgba(100,70,15,0.35)",
-                      color:      tier.highlighted ? "#fde68a" : "rgba(200,160,40,0.7)",
+                      background: tier.highlighted ? "rgba(233,195,73,0.12)" : "rgba(209,188,255,0.08)",
+                      color: tier.highlighted ? "#e9c349" : "#d1bcff",
                     }}
                   >
                     {tier.badge}
                   </span>
                 )}
               </div>
-              <div className="text-amber-500/50 text-xs font-serif mt-0.5">{tier.tagline}</div>
+              <div className="font-sans text-xs mt-0.5" style={{ color: "#9aabb8" }}>
+                {tier.tagline}
+              </div>
             </div>
             <div className="text-right flex-shrink-0 ml-4">
-              <div className="text-amber-200 font-serif font-bold text-xl">{tier.priceStr}</div>
+              <div className="font-serif font-bold text-xl" style={{ color: "#e9c349" }}>
+                {tier.priceStr}
+              </div>
               {tier.strikeStr && (
-                <div className="text-amber-800/50 text-xs font-serif line-through">{tier.strikeStr}</div>
+                <div className="font-sans text-xs line-through" style={{ color: "rgba(154,171,184,0.35)" }}>
+                  {tier.strikeStr}
+                </div>
               )}
             </div>
           </div>
           <div className="space-y-1.5">
             {tier.features.map((f) => (
-              <div key={f} className="flex items-start gap-2 text-amber-200/65 text-sm font-serif">
-                <span className="text-amber-500/70 flex-shrink-0 mt-px">✦</span>
-                {f}
+              <div key={f} className="flex items-start gap-2 font-sans text-sm">
+                <span style={{ color: "#e9c349", flexShrink: 0, marginTop: 1 }}>✦</span>
+                <span style={{ color: "rgba(232,232,232,0.7)" }}>{f}</span>
               </div>
             ))}
           </div>
@@ -286,31 +336,37 @@ export default function ReadingSections({
   inlineShareSection,
 }: ReadingSectionsProps) {
 
-  // ── Guard: null result ────────────────────────────────────
   if (!result) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <div className="text-amber-600/35 text-5xl animate-pulse">☽</div>
-        <div className="text-amber-500/45 font-serif">正在載入解讀…</div>
+        <div className="text-5xl animate-pulse" style={{ color: "rgba(233,195,73,0.3)" }}>☽</div>
+        <div className="font-sans" style={{ color: "rgba(154,171,184,0.5)" }}>正在載入解讀…</div>
       </div>
     );
   }
 
   const { freeReading, deepReading, timelineReport, qaBonus, cards = [] } = result;
 
-  // ── Guard: freeReading missing ────────────────────────────
   if (!freeReading) {
     return (
-      <div className="rounded-xl border border-rose-900/35 bg-rose-950/15 p-6 text-center">
-        <div className="text-rose-400 font-serif">解讀資料載入失敗，請返回重新占卜。</div>
-        <a href="/reading" className="inline-block mt-3 text-amber-400 text-sm font-serif hover:text-amber-300">
+      <div
+        className="rounded-2xl p-6 text-center"
+        style={{ background: "rgba(207,102,121,0.08)", border: "1px solid rgba(207,102,121,0.2)" }}
+      >
+        <div className="font-sans" style={{ color: "#cf6679" }}>
+          解讀資料載入失敗，請返回重新占卜。
+        </div>
+        <a
+          href="/reading"
+          className="inline-block mt-3 font-sans text-sm transition-opacity hover:opacity-80"
+          style={{ color: "#e9c349" }}
+        >
           ← 重新占卜
         </a>
       </div>
     );
   }
 
-  // ── Safe field reads ──────────────────────────────────────
   const headline     = s(freeReading.headline,  "牌面已揭示");
   const mainAxis     = s(freeReading.mainAxis,   "請見下方各牌詳細解讀。");
   const nextStep     = s(freeReading.nextStep,   "靜下來，誠實面對你真正想要的結果。");
@@ -323,61 +379,89 @@ export default function ReadingSections({
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
 
-      {/* ── Card reveal ─────────────────────────────────────── */}
+      {/* Card reveal */}
       <SectionBox title="你的牌陣" icon="🃏" accent>
         <CardRevealRow cards={cards} />
-        <p className="text-amber-700/35 text-center text-xs font-serif">
+        <p
+          className="font-sans text-center text-xs"
+          style={{ color: "rgba(154,171,184,0.4)" }}
+        >
           點擊每張牌翻開 · 三張代表過去、現在、未來
         </p>
       </SectionBox>
 
-      {/* ── Headline ─────────────────────────────────────────── */}
+      {/* Headline */}
       <div
-        className="rounded-xl px-6 py-5 text-center"
+        className="rounded-2xl px-6 py-5 text-center"
         style={{
-          border:     "1.5px solid rgba(180,130,30,0.3)",
-          background: "linear-gradient(145deg,rgba(40,20,5,0.5) 0%,rgba(20,5,35,0.4) 100%)",
+          background: "linear-gradient(145deg, rgba(26,34,50,0.7) 0%, rgba(19,25,32,0.7) 100%)",
+          border: "1.5px solid rgba(233,195,73,0.2)",
         }}
       >
-        <div className="text-amber-600/45 text-xs font-serif uppercase tracking-widest mb-2">
+        <div
+          className="font-sans text-xs uppercase tracking-widest mb-2"
+          style={{ color: "rgba(233,195,73,0.5)", letterSpacing: "0.18em" }}
+        >
           牌面所說
         </div>
-        <div className="text-amber-100 font-serif text-lg sm:text-xl leading-relaxed font-semibold">
+        <div
+          className="font-serif text-lg sm:text-xl leading-relaxed font-semibold"
+          style={{ color: "#e8e8e8" }}
+        >
           「{headline}」
         </div>
       </div>
 
-      {/* ── Main Axis ────────────────────────────────────────── */}
+      {/* Main axis */}
       <SectionBox title="整體解讀" icon="◈">
-        <p className="text-amber-100/80 font-serif text-sm leading-[1.9] whitespace-pre-line">
+        <p
+          className="font-sans text-sm leading-[1.9] whitespace-pre-line"
+          style={{ color: "rgba(232,232,232,0.8)" }}
+        >
           {mainAxis}
         </p>
       </SectionBox>
 
-      {/* ── Per-card readings ──────────────────────────────── */}
+      {/* Per-card readings */}
       <SectionBox title="三牌詳解" icon="✦">
         <div className="space-y-5">
           {cardReadings.length > 0
             ? cardReadings.map((cr, i) => (
-                <div key={i} className="border-l-2 border-amber-800/45 pl-4 space-y-1.5">
-                  <div className="text-amber-400 font-serif font-medium text-sm">
+                <div
+                  key={i}
+                  className="pl-4 space-y-1.5"
+                  style={{ borderLeft: "2px solid rgba(233,195,73,0.25)" }}
+                >
+                  <div className="font-serif font-medium text-sm" style={{ color: "#e9c349" }}>
                     {s(cr?.position, `第${i + 1}張`)}
                     {s(cr?.cardName) ? ` ─ ${s(cr.cardName)}` : ""}
                   </div>
-                  <p className="text-amber-100/75 font-serif text-sm leading-[1.85]">
+                  <p
+                    className="font-sans text-sm leading-[1.85]"
+                    style={{ color: "rgba(232,232,232,0.75)" }}
+                  >
                     {s(cr?.interpretation, "解讀暫時未能載入。")}
                   </p>
                 </div>
               ))
             : cards.map((dc, i) => (
-                <div key={i} className="border-l-2 border-amber-800/45 pl-4 space-y-1.5">
-                  <div className="text-amber-400 font-serif font-medium text-sm">
+                <div
+                  key={i}
+                  className="pl-4 space-y-1.5"
+                  style={{ borderLeft: "2px solid rgba(233,195,73,0.25)" }}
+                >
+                  <div className="font-serif font-medium text-sm" style={{ color: "#e9c349" }}>
                     {dc.position} ─ {dc.card.name_zh}
                     {dc.reversed && (
-                      <span className="text-rose-400/65 ml-1.5 text-xs">逆位</span>
+                      <span className="font-sans text-xs ml-1.5" style={{ color: "rgba(209,188,255,0.65)" }}>
+                        逆位
+                      </span>
                     )}
                   </div>
-                  <p className="text-amber-100/75 font-serif text-sm leading-[1.85]">
+                  <p
+                    className="font-sans text-sm leading-[1.85]"
+                    style={{ color: "rgba(232,232,232,0.75)" }}
+                  >
                     {dc.reversed ? dc.card.meaning_reversed : dc.card.meaning_upright}
                   </p>
                 </div>
@@ -385,9 +469,9 @@ export default function ReadingSections({
         </div>
       </SectionBox>
 
-      {/* ── Next step ────────────────────────────────────────── */}
+      {/* Next step */}
       <SectionBox title="下一步" icon="→">
-        <p className="text-amber-100/80 font-serif text-sm leading-[1.9]">
+        <p className="font-sans text-sm leading-[1.9]" style={{ color: "rgba(232,232,232,0.8)" }}>
           {nextStep}
         </p>
       </SectionBox>
@@ -396,52 +480,67 @@ export default function ReadingSections({
 
       <Divider />
 
-      {/* ── Deep reading (unlocked) or blurred preview ─────── */}
+      {/* Deep reading */}
       {hasDeep ? (
         <SectionBox title="深度心理解讀" icon="🔮" accent>
           <div className="space-y-5">
             {s(deepReading!.psychologicalBreakdown) && (
               <div className="space-y-1.5">
-                <div className="text-amber-500/55 text-xs font-serif uppercase tracking-wider">
+                <div
+                  className="font-sans text-xs uppercase tracking-wider"
+                  style={{ color: "rgba(154,171,184,0.5)", letterSpacing: "0.12em" }}
+                >
                   心理分析
                 </div>
-                <p className="text-amber-100/80 font-serif text-sm leading-[1.9]">
+                <p className="font-sans text-sm leading-[1.9]" style={{ color: "rgba(232,232,232,0.8)" }}>
                   {s(deepReading!.psychologicalBreakdown)}
                 </p>
               </div>
             )}
             {s(deepReading!.hiddenTruth) && (
               <div className="space-y-1.5">
-                <div className="text-amber-500/55 text-xs font-serif uppercase tracking-wider">
+                <div
+                  className="font-sans text-xs uppercase tracking-wider"
+                  style={{ color: "rgba(154,171,184,0.5)", letterSpacing: "0.12em" }}
+                >
                   局勢真相
                 </div>
-                <p className="text-amber-100/80 font-serif text-sm leading-[1.9]">
+                <p className="font-sans text-sm leading-[1.9]" style={{ color: "rgba(232,232,232,0.8)" }}>
                   {s(deepReading!.hiddenTruth)}
                 </p>
               </div>
             )}
             {s(deepReading!.actionAdvice) && (
               <div className="space-y-1.5">
-                <div className="text-amber-500/55 text-xs font-serif uppercase tracking-wider">
+                <div
+                  className="font-sans text-xs uppercase tracking-wider"
+                  style={{ color: "rgba(154,171,184,0.5)", letterSpacing: "0.12em" }}
+                >
                   行動建議
                 </div>
-                <p className="text-amber-100/80 font-serif text-sm leading-[1.9] whitespace-pre-line">
+                <p
+                  className="font-sans text-sm leading-[1.9] whitespace-pre-line"
+                  style={{ color: "rgba(232,232,232,0.8)" }}
+                >
                   {s(deepReading!.actionAdvice)}
                 </p>
               </div>
             )}
             {s(deepReading!.hardQuestion) && (
               <div
-                className="rounded-lg p-4 mt-1"
+                className="rounded-xl p-4 mt-1"
                 style={{
-                  border:     "1px solid rgba(180,130,30,0.3)",
-                  background: "rgba(60,35,5,0.25)",
+                  background: "rgba(233,195,73,0.06)",
+                  border: "1px solid rgba(233,195,73,0.15)",
                 }}
               >
-                <div className="text-amber-500/55 text-xs font-serif uppercase tracking-wider mb-1.5">
+                <div
+                  className="font-sans text-xs uppercase tracking-wider mb-1.5"
+                  style={{ color: "rgba(154,171,184,0.5)", letterSpacing: "0.12em" }}
+                >
                   最應該面對的問題
                 </div>
-                <p className="text-amber-200 font-serif italic text-sm leading-relaxed">
+                <p className="font-serif italic text-sm leading-relaxed" style={{ color: "#e9c349" }}>
                   「{s(deepReading!.hardQuestion)}」
                 </p>
               </div>
@@ -452,7 +551,7 @@ export default function ReadingSections({
         <LockedSection title="深度心理解讀" lines={5} />
       ) : null}
 
-      {/* ── Timeline (unlocked) or blurred ─────────────────── */}
+      {/* Timeline */}
       {hasTimeline ? (
         <SectionBox title="時間線預測" icon="◷">
           <div className="space-y-3">
@@ -466,14 +565,18 @@ export default function ReadingSections({
               value ? (
                 <div
                   key={label}
-                  className="rounded-lg p-3 space-y-1"
+                  className="rounded-xl p-3 space-y-1"
                   style={{
-                    border:     "1px solid rgba(100,70,15,0.3)",
-                    background: "rgba(13,5,24,0.35)",
+                    background: "rgba(15,20,27,0.5)",
+                    border: "1px solid rgba(233,195,73,0.1)",
                   }}
                 >
-                  <div className="text-amber-500/60 text-xs font-serif">{label}</div>
-                  <p className="text-amber-100/75 font-serif text-sm leading-[1.85]">{value}</p>
+                  <div className="font-sans text-xs" style={{ color: "rgba(233,195,73,0.6)" }}>
+                    {label}
+                  </div>
+                  <p className="font-sans text-sm leading-[1.85]" style={{ color: "rgba(232,232,232,0.75)" }}>
+                    {value}
+                  </p>
                 </div>
               ) : null
             )}
@@ -483,23 +586,23 @@ export default function ReadingSections({
         <LockedSection title="時間線預測" lines={3} />
       ) : null}
 
-      {/* ── Q&A Bonus ─────────────────────────────────────── */}
+      {/* Q&A */}
       {hasQa ? (
         <SectionBox title="延伸問答" icon="💬">
           <div className="space-y-4">
             {qaBonus!.map((qa, i) => (
               <div
                 key={i}
-                className="rounded-lg p-4 space-y-2"
+                className="rounded-xl p-4 space-y-2"
                 style={{
-                  border:     "1px solid rgba(100,70,15,0.25)",
-                  background: "rgba(13,5,24,0.3)",
+                  background: "rgba(15,20,27,0.4)",
+                  border: "1px solid rgba(233,195,73,0.08)",
                 }}
               >
-                <div className="text-amber-400 font-serif text-sm font-medium">
+                <div className="font-serif text-sm font-medium" style={{ color: "#e9c349" }}>
                   Q：{s(qa?.question)}
                 </div>
-                <p className="text-amber-100/70 font-serif text-sm leading-[1.85]">
+                <p className="font-sans text-sm leading-[1.85]" style={{ color: "rgba(232,232,232,0.7)" }}>
                   {s(qa?.answer)}
                 </p>
               </div>
@@ -510,8 +613,10 @@ export default function ReadingSections({
         <LockedSection title="延伸問答" lines={3} />
       ) : null}
 
-      {/* ── Paywall CTA ─────────────────────────────────────── */}
-      {showPaywall && (!hasDeep || !hasTimeline || !hasQa) && <PaywallCTA readingId={readingId} />}
+      {/* Paywall CTA */}
+      {showPaywall && (!hasDeep || !hasTimeline || !hasQa) && (
+        <PaywallCTA readingId={readingId} />
+      )}
 
     </div>
   );

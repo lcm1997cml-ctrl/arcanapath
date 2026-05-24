@@ -4,7 +4,15 @@
 @tailwind utilities;
 
 :root {
-  --font-serif: 'IM Fell English', 'Noto Serif TC', Georgia, serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --color-bg: #0f141b;
+  --color-surface: #131920;
+  --color-raised: #1a2232;
+  --color-secondary: #e9c349;
+  --color-tertiary: #d1bcff;
+  --color-text: #e8e8e8;
+  --color-muted: #9aabb8;
 }
 
 * {
@@ -12,30 +20,111 @@
 }
 
 body {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  background: #0d0518;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0d0518;
-}
-::-webkit-scrollbar-thumb {
-  background: #3d1f00;
-  border-radius: 3px;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: rgba(233,195,73,0.2); border-radius: 3px; }
 
 /* Selection */
-::selection {
-  background: rgba(146, 94, 28, 0.3);
-  color: #fde68a;
+::selection { background: rgba(233,195,73,0.2); color: #e9c349; }
+
+/* Font utilities */
+.font-serif { font-family: var(--font-serif); }
+.font-sans  { font-family: var(--font-sans); }
+
+/* ── Star field ─────────────────────────────────────────────── */
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+  animation: twinkle var(--duration, 3s) var(--delay, 0s) infinite ease-in-out;
 }
 
-/* Font utility */
-.font-serif {
-  font-family: var(--font-serif);
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.8); }
+  50%       { opacity: 1;    transform: scale(1.4); }
+}
+
+/* ── Shimmer ────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.card-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(233,195,73,0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3.5s infinite linear;
+}
+.gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(233,195,73,0.12) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite linear;
+}
+
+/* ── Oracle glow ────────────────────────────────────────────── */
+@keyframes oracle-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(233,195,73,0.08), 0 0 40px rgba(233,195,73,0.04); }
+  50%       { box-shadow: 0 0 35px rgba(233,195,73,0.18), 0 0 70px rgba(233,195,73,0.08); }
+}
+.oracle-focused { animation: oracle-glow 2.5s infinite ease-in-out; }
+
+/* ── Glass panel ────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(19, 25, 32, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(233,195,73,0.12);
+}
+
+/* ── Gold filigree border (tarot card) ──────────────────────── */
+.gold-filigree {
+  border: 2px solid rgba(233,195,73,0.4);
+  box-shadow: 0 0 20px rgba(233,195,73,0.08), inset 0 0 20px rgba(233,195,73,0.03);
+}
+.gold-filigree:hover {
+  border-color: rgba(233,195,73,0.7);
+  box-shadow: 0 0 30px rgba(233,195,73,0.15), inset 0 0 30px rgba(233,195,73,0.06);
+}
+
+/* ── Celestial dust float ───────────────────────────────────── */
+@keyframes celestial-float {
+  0%   { transform: translateY(0) rotate(0deg);   opacity: 0.6; }
+  100% { transform: translateY(-120px) rotate(180deg); opacity: 0; }
+}
+
+/* ── Cosmic glow ────────────────────────────────────────────── */
+@keyframes cosmic-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1;   }
+}
+.cosmic-glow { animation: cosmic-pulse 3s infinite ease-in-out; }
+
+/* ── Utility ────────────────────────────────────────────────── */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }

@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center text-white px-4 text-center"
-      style={{ background: "linear-gradient(160deg, #0d0518 0%, #1a0a2e 50%, #0d0518 100%)" }}
+      style={{ background: "#0f141b" }}
     >
       <div className="text-amber-600/30 text-8xl mb-6">☽</div>
       <h1 className="text-amber-300 font-serif text-3xl font-semibold mb-3">

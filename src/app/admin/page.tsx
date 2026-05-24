@@ -70,7 +70,7 @@ export default function AdminPage() {
   return (
     <div
       className="min-h-screen text-white"
-      style={{ background: "linear-gradient(160deg, #0d0518 0%, #1a0a2e 50%, #0d0518 100%)" }}
+      style={{ background: "#0f141b" }}
     >
       {/* Header */}
       <nav className="flex justify-between items-center px-6 py-4 border-b border-amber-900/20">

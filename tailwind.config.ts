@@ -10,15 +10,24 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        serif: ["IM Fell English", "Noto Serif TC", "Georgia", "serif"],
+        serif: ["Playfair Display", "Georgia", "serif"],
+        sans: ["Manrope", "system-ui", "sans-serif"],
       },
       colors: {
         arcana: {
-          bg: "#0d0518",
-          deep: "#1a0a2e",
-          mid: "#2d1b4e",
-          gold: "#b45309",
-          glow: "#fbbf24",
+          bg: "#0f141b",
+          surface: "#131920",
+          raised: "#1a2232",
+          overlay: "#1e2a3a",
+          gold: "#e9c349",
+          "gold-dim": "#c9a32e",
+          "gold-subtle": "rgba(233,195,73,0.12)",
+          purple: "#d1bcff",
+          "purple-dim": "#b09de0",
+          "purple-subtle": "rgba(209,188,255,0.12)",
+          text: "#e8e8e8",
+          muted: "#9aabb8",
+          error: "#cf6679",
         },
       },
     },
