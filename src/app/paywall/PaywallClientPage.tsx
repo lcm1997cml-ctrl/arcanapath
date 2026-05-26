@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PRICING_TIERS, type PricingTier } from "@/lib/pricing";
 import CheckoutPlanButtons from "@/components/CheckoutPlanButtons";
+import TopNav from "@/components/TopNav";
+import SideNav from "@/components/SideNav";
 
 // ─── Pricing card ─────────────────────────────────────────────
 function PricingCard({
@@ -301,27 +303,10 @@ export default function PaywallClientPage() {
         }}
       />
 
-      {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav
-        className="relative z-10 flex items-center justify-between px-5 py-3.5"
-        style={{
-          borderBottom: "1px solid rgba(233,195,73,0.1)",
-          background: "rgba(15,20,27,0.85)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <Link href="/" className="font-serif text-lg font-semibold" style={{ color: "#e9c349" }}>
-          ✦ ArcanaPath
-        </Link>
-        <Link
-          href="/reading"
-          className="font-sans text-sm transition-opacity hover:opacity-100"
-          style={{ color: "rgba(154,171,184,0.6)" }}
-        >
-          ← 返回占卜
-        </Link>
-      </nav>
+      <TopNav />
+      <SideNav />
 
+      <div className="lg:pl-64 pt-20">
       <div className="relative z-10 max-w-lg mx-auto px-4 py-10 space-y-8">
 
         {/* ── Hero ─────────────────────────────────────────── */}
@@ -436,6 +421,7 @@ export default function PaywallClientPage() {
         </div>
 
       </div>
+      </div>{/* end lg:pl-64 pt-20 */}
     </div>
   );
 }

@@ -12,6 +12,8 @@ import type { Topic, DrawnCard } from "@/types/reading";
 import { deck, serializeDrawnCards } from "@/lib/tarot/utils";
 import TarotCard from "@/components/TarotCard";
 import ReadingFan from "@/components/ReadingFan";
+import TopNav from "@/components/TopNav";
+import SideNav from "@/components/SideNav";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -388,41 +390,12 @@ export default function ReadingClientPage() {
 
   return (
     <div
-      className="min-h-screen text-white"
-      style={{ background: "#0f141b" }}
+      className="min-h-screen text-white bg-background"
     >
-      {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav
-        className="flex items-center justify-between px-5 py-3.5"
-        style={{
-          borderBottom: "1px solid rgba(233,195,73,0.1)",
-          background: "rgba(15,20,27,0.85)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <a href="/" className="font-serif text-lg font-semibold" style={{ color: "#e9c349" }}>
-          ✦ ArcanaPath
-        </a>
-        {remainingFreeHint !== null && (
-          <span
-            className="font-sans text-xs px-2.5 py-1 rounded-full"
-            style={{
-              background: "rgba(233,195,73,0.08)",
-              border: "1px solid rgba(233,195,73,0.18)",
-              color: "#e9c349",
-            }}
-          >
-            剩餘 {remainingFreeHint} 次
-          </span>
-        )}
-        <a
-          href="/paywall"
-          className="font-sans text-sm transition-opacity hover:opacity-80"
-          style={{ color: "rgba(154,171,184,0.6)" }}
-        >
-          升級
-        </a>
-      </nav>
+      <TopNav remainingCount={remainingFreeHint} />
+      <SideNav />
+
+      <div className="lg:pl-64 pt-20">
 
       {/* ── Title + step indicator ───────────────────────────── */}
       <div className="text-center pt-7 pb-2 px-4">
@@ -829,6 +802,7 @@ export default function ReadingClientPage() {
           {toast}
         </div>
       )}
+      </div>{/* end lg:pl-64 pt-20 */}
     </div>
   );
 }

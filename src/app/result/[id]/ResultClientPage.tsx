@@ -7,6 +7,8 @@ import type { ReadingResult, UserRole } from "@/types/reading";
 import ReadingSections from "@/components/ReadingSections";
 import CheckoutPlanButtons from "@/components/CheckoutPlanButtons";
 import { buildShareImagePayloadFromReading, renderShareImageToDataUrlAsync } from "@/lib/shareImageCanvas";
+import TopNav from "@/components/TopNav";
+import SideNav from "@/components/SideNav";
 
 interface ResultClientPageProps {
   id: string;
@@ -319,46 +321,26 @@ export default function ResultClientPage({
   );
 
   return (
-    <div
-      className="min-h-screen text-white pb-28"
-      style={{ background: "#0f141b" }}
-    >
-      {/* Ambient glow */}
+    <div className="min-h-screen text-white pb-28 bg-background">
+      {/* Ambient violet glow */}
       <div
         className="pointer-events-none fixed top-0 left-1/2 -translate-x-1/2"
         style={{
-          width: 600,
-          height: 300,
-          borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(209,188,255,0.05) 0%, transparent 70%)",
-          filter: "blur(60px)",
-          zIndex: 0,
+          width: 600, height: 300, borderRadius: "50%",
+          background: "radial-gradient(ellipse, rgba(109,91,151,0.12) 0%, transparent 70%)",
+          filter: "blur(60px)", zIndex: 0,
         }}
       />
 
-      {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav
-        className="relative z-10 flex items-center justify-between px-5 py-3.5"
-        style={{
-          borderBottom: "1px solid rgba(233,195,73,0.1)",
-          background: "rgba(15,20,27,0.85)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <Link href="/" className="font-serif text-lg font-semibold" style={{ color: "#e9c349" }}>
-          ✦ ArcanaPath
-        </Link>
-        <div className="flex items-center gap-4 text-sm font-sans">
-          {userRole === "admin" && (
-            <Link href="/admin" style={{ color: "#e9c349" }}>後台</Link>
-          )}
-          {isLoggedIn ? (
-            <Link href="/dashboard" style={{ color: "rgba(154,171,184,0.7)" }}>我的記錄</Link>
-          ) : (
-            <Link href="/reading" style={{ color: "rgba(154,171,184,0.7)" }}>← 再問一次</Link>
-          )}
+      <TopNav />
+      <SideNav />
+
+      <div className="lg:pl-64 pt-20">
+      {userRole === "admin" && (
+        <div className="text-center py-1">
+          <Link href="/admin" className="text-xs" style={{ color: "#e9c349" }}>後台</Link>
         </div>
-      </nav>
+      )}
 
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="relative z-10 text-center pt-8 pb-4 px-5">
@@ -500,6 +482,7 @@ export default function ResultClientPage({
           {shareToast}
         </div>
       )}
+      </div>{/* end lg:pl-64 pt-20 */}
     </div>
   );
 }
