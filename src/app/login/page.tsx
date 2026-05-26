@@ -42,59 +42,66 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center text-white px-4"
-      style={{ background: "#0f141b" }}
+      style={{
+        background: "radial-gradient(ellipse at 50% 0%, rgba(109,91,151,0.10) 0%, transparent 55%), #0f141b",
+      }}
     >
       <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <Link href="/" className="text-amber-500 font-serif text-2xl font-semibold">
-            ✦ ArcanaPath
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "radial-gradient(circle, rgba(233,195,73,0.2) 0%, rgba(209,188,255,0.08) 100%)", border: "1px solid rgba(233,195,73,0.35)" }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#e9c349", fontVariationSettings: "\'FILL\' 1" }}>auto_awesome</span>
+            </div>
+            <span className="font-serif text-2xl font-semibold tracking-widest" style={{ color: "#e9c349" }}>ArcanaPath</span>
           </Link>
-          <p className="text-amber-500/50 text-sm font-serif mt-2">管理員登入</p>
+          <p className="font-sans text-xs" style={{ color: "rgba(154,171,184,0.5)" }}>管理員登入</p>
         </div>
 
-        <div className="rounded-xl border border-amber-800/30 bg-amber-950/20 p-6 space-y-4">
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(19,25,32,0.85)", border: "1px solid rgba(233,195,73,0.12)" }}>
           <div>
-            <label className="text-amber-400 text-sm font-serif block mb-1.5">電郵</label>
+            <label className="font-sans text-xs mb-1.5 block" style={{ color: "rgba(154,171,184,0.7)" }}>電郵</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full bg-black/30 border border-amber-800/40 rounded-lg px-3 py-2.5 text-amber-100 placeholder:text-amber-800/50 font-serif text-sm focus:outline-none focus:border-amber-600 transition-colors"
+              placeholder="admin@example.com"
+              className="w-full font-sans text-sm rounded-xl px-4 py-3 focus:outline-none transition-all"
+              style={{ background: "rgba(9,15,21,0.8)", border: "1px solid rgba(233,195,73,0.15)", color: "#e8e8e8" }}
             />
           </div>
           <div>
-            <label className="text-amber-400 text-sm font-serif block mb-1.5">密碼</label>
+            <label className="font-sans text-xs mb-1.5 block" style={{ color: "rgba(154,171,184,0.7)" }}>密碼</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              className="w-full bg-black/30 border border-amber-800/40 rounded-lg px-3 py-2.5 text-amber-100 placeholder:text-amber-800/50 font-serif text-sm focus:outline-none focus:border-amber-600 transition-colors"
+              className="w-full font-sans text-sm rounded-xl px-4 py-3 focus:outline-none transition-all"
+              style={{ background: "rgba(9,15,21,0.8)", border: "1px solid rgba(233,195,73,0.15)", color: "#e8e8e8" }}
             />
           </div>
-
           {error && (
-            <p className="text-rose-400 text-xs font-serif bg-rose-950/30 border border-rose-800/40 rounded p-2">
+            <div className="rounded-xl px-4 py-2.5 font-sans text-xs" style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "rgba(252,165,165,0.9)" }}>
               {error}
-            </p>
+            </div>
           )}
-
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="w-full bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white font-serif font-semibold py-3 rounded-lg transition-colors"
+            className="w-full py-3.5 rounded-xl font-sans text-sm font-semibold transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #e9c349 0%, #c9a32e 100%)", color: "#0f141b" }}
           >
             {loading ? "登入中…" : "登入"}
           </button>
         </div>
 
-        <p className="text-center text-amber-600/50 text-sm font-serif">
-          一般用戶無需註冊，前往{" "}
-          <Link href="/reading" className="text-amber-400 hover:text-amber-300">
-            占卜頁
-          </Link>{" "}
+        <p className="text-center font-sans text-xs" style={{ color: "rgba(154,171,184,0.45)" }}>
+          一般用戶無需帳戶，前往{" "}
+          <Link href="/reading" className="transition-colors hover:text-yellow-300" style={{ color: "#e9c349" }}>占卜頁</Link>{" "}
           即可開始
         </p>
       </div>

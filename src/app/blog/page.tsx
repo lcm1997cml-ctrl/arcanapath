@@ -6,65 +6,20 @@ import React, { useState } from "react";
 import Link from "next/link";
 import TopNav from "@/components/TopNav";
 import SideNav from "@/components/SideNav";
+import { BLOG_ARTICLES } from "@/lib/blog-content";
 
-// ─── Static blog articles ─────────────────────────────────────
-const ARTICLES = [
-  {
-    id: "lovers-tarot",
-    category: "塔羅基礎",
-    readTime: "8 分鐘閱讀",
-    title: "理解塔羅「戀人」牌喺愛情占卜中嘅意義",
-    excerpt:
-      "「戀人」牌經常被誤解為簡單嘅浪漫象徵，但其根源實際上深入到選擇、契合度同內在和諧嘅架構中。探索點樣喺唔同語境下解讀呢張強大嘅大阿爾克那。",
-    date: "2024年5月18日",
-    featured: true,
-    gradient: "from-[#1a0a2e] via-[#0f141b] to-[#0a1520]",
-  },
-  {
-    id: "reversed-cards",
-    category: "情緒成長",
-    readTime: "5 分鐘閱讀",
-    title: "逆位牌隱藏嘅力量",
-    excerpt:
-      "點解抽到逆位牌唔係壞兆頭，而係需要內在反思同能量轉換嘅提醒。",
-    date: "2024年5月14日",
-    featured: false,
-    gradient: "from-[#0a1520] to-[#131920]",
-  },
-  {
-    id: "mercury-retrograde",
-    category: "占星術",
-    readTime: "6 分鐘閱讀",
-    title: "水逆期間：靈魂避風港指南",
-    excerpt:
-      "利用我哋嘅宇宙生存策略，以優雅同戰術性嘅沉默嚟應對溝通混亂。",
-    date: "2024年5月10日",
-    featured: false,
-    gradient: "from-[#0f0a20] to-[#131920]",
-  },
-  {
-    id: "crystals-daily",
-    category: "儀式與手作",
-    readTime: "4 分鐘閱讀",
-    title: "每日顯化嘅水晶選用",
-    excerpt:
-      "點樣將特定寶石同你嘅晨間塔羅牌結合，以增強你嘅意圖並保護你嘅氣場。",
-    date: "2024年5月5日",
-    featured: false,
-    gradient: "from-[#0f1a14] to-[#131920]",
-  },
-  {
-    id: "shadow-work",
-    category: "情緒成長",
-    readTime: "7 分鐘閱讀",
-    title: "陰影工作：月亮嘅映射",
-    excerpt:
-      "解開隱藏喺黑暗中嘅自己。心理同靈魂整合嘅實用指南。",
-    date: "2024年4月28日",
-    featured: false,
-    gradient: "from-[#0a0f20] to-[#131920]",
-  },
-];
+// Map blog-content data to the shape this component needs
+const ARTICLES = BLOG_ARTICLES.map((a) => ({
+  id: a.slug,
+  category: a.category,
+  readTime: a.readTime,
+  title: a.title,
+  excerpt: a.excerpt,
+  date: a.date,
+  featured: a.featured ?? false,
+  gradient: `from-[${a.gradientFrom}] to-[#131920]`,
+  accentIcon: a.accentIcon,
+}));
 
 const CATEGORIES = ["所有見解", "塔羅基礎", "占星術", "情緒成長", "儀式與手作"];
 
@@ -90,7 +45,7 @@ function SmallArticleCard({ article }: { article: typeof ARTICLES[0] }) {
             className="material-symbols-outlined"
             style={{ fontSize: 64, color: "#e9c349", fontVariationSettings: "'FILL' 1" }}
           >
-            auto_awesome
+            {article.accentIcon ?? "auto_awesome"}
           </span>
         </div>
       </div>

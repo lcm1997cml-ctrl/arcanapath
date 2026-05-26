@@ -1,10 +1,12 @@
-// src/app/dashboard/page.tsx
+// src/app/dashboard/page.tsx — 紀錄頁
+// Admin users see full history. Visitors see a beautiful CTA page.
 import React from "react";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getReadingsByUser } from "@/lib/store";
 import type { ReadingResult } from "@/types";
+import TopNav from "@/components/TopNav";
+import SideNav from "@/components/SideNav";
 
 const TOPIC_LABELS: Record<string, string> = {
   love: "感情",
@@ -13,135 +15,230 @@ const TOPIC_LABELS: Record<string, string> = {
   life: "人生",
 };
 
+// ─── Visitor view (no auth) ───────────────────────────────────
+function VisitorDashboard() {
+  return (
+    <div className="max-w-xl mx-auto px-4 md:px-8 py-16 space-y-10 text-center animate-fade-in">
+
+      {/* Decorative orb */}
+      <div className="flex justify-center">
+        <div
+          className="relative w-32 h-32 rounded-full flex items-center justify-center"
+          style={{
+            background: "radial-gradient(circle, rgba(233,195,73,0.12) 0%, rgba(209,188,255,0.06) 100%)",
+            border: "1.5px solid rgba(233,195,73,0.25)",
+            boxShadow: "0 0 60px rgba(233,195,73,0.08)",
+          }}
+        >
+          {/* Inner ring */}
+          <div
+            className="absolute inset-4 rounded-full"
+            style={{ border: "1px solid rgba(233,195,73,0.15)" }}
+          />
+          <span
+            className="material-symbols-outlined relative z-10"
+            style={{ fontSize: 44, color: "#e9c349", fontVariationSettings: "'FILL' 1" }}
+          >
+            auto_stories
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h1 className="font-serif text-3xl font-semibold" style={{ color: "#e8e8e8" }}>
+          你的占卜旅程
+        </h1>
+        <p className="font-sans text-sm leading-relaxed max-w-sm mx-auto" style={{ color: "#9aabb8" }}>
+          完整的占卜歷史記錄、靈性日記和個性化洞察，在升級後永久保存。
+        </p>
+      </div>
+
+      {/* Preview cards (decorative) */}
+      <div className="space-y-3 text-left">
+        {[
+          { question: "我嘅感情關係走向如何？", topic: "感情", date: "今日", blurred: true },
+          { question: "事業上嘅轉變時機到了嗎？", topic: "事業", date: "昨日", blurred: true },
+        ].map((item, i) => (
+          <div
+            key={i}
+            className="rounded-xl p-4 transition-all"
+            style={{
+              background: "rgba(19,25,32,0.7)",
+              border: "1px solid rgba(233,195,73,0.08)",
+              filter: "blur(2px)",
+              userSelect: "none",
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-serif text-sm" style={{ color: "#e8e8e8" }}>{item.question}</p>
+                <p className="font-sans text-xs mt-1" style={{ color: "rgba(154,171,184,0.5)" }}>
+                  {item.topic} · {item.date}
+                </p>
+              </div>
+              <span className="font-sans text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(233,195,73,0.08)", color: "rgba(233,195,73,0.6)", border: "1px solid rgba(233,195,73,0.12)" }}>
+                完整版
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* CTAs */}
+      <div className="space-y-3">
+        <Link
+          href="/reading"
+          className="block w-full py-3.5 rounded-xl font-sans text-sm font-semibold transition-all hover:brightness-110 active:scale-95"
+          style={{
+            background: "linear-gradient(135deg, #e9c349 0%, #c9a32e 100%)",
+            color: "#0f141b",
+          }}
+        >
+          開始新的占卜 ✦
+        </Link>
+        <Link
+          href="/paywall"
+          className="block w-full py-3.5 rounded-xl font-sans text-sm font-semibold transition-all hover:brightness-110"
+          style={{
+            background: "rgba(19,25,32,0.8)",
+            border: "1px solid rgba(233,195,73,0.2)",
+            color: "#e9c349",
+          }}
+        >
+          解鎖完整紀錄
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin history view ───────────────────────────────────────
+function AdminDashboard({ readings, userName }: { readings: ReadingResult[]; userName: string }) {
+  const sorted = [...readings].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 md:px-8 py-12 space-y-8">
+
+      {/* Stats */}
+      <div
+        className="rounded-2xl p-6"
+        style={{ background: "rgba(19,25,32,0.7)", border: "1px solid rgba(233,195,73,0.1)" }}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="font-serif text-lg font-semibold" style={{ color: "#e8e8e8" }}>{userName}</p>
+            <p className="font-sans text-xs" style={{ color: "rgba(154,171,184,0.6)" }}>管理員</p>
+          </div>
+          <Link
+            href="/admin"
+            className="font-sans text-xs px-3 py-1.5 rounded-lg transition-all hover:brightness-110"
+            style={{ background: "rgba(233,195,73,0.08)", border: "1px solid rgba(233,195,73,0.18)", color: "#e9c349" }}
+          >
+            後台管理
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          {[
+            { label: "總占卜次數", value: readings.length },
+            { label: "已付費解鎖", value: readings.filter((r) => r.isPaid).length },
+            { label: "本月占卜", value: readings.filter((r) => new Date(r.createdAt).getMonth() === new Date().getMonth()).length },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-xl py-3" style={{ background: "rgba(9,15,21,0.5)", border: "1px solid rgba(233,195,73,0.06)" }}>
+              <p className="font-serif text-2xl font-semibold" style={{ color: "#e9c349" }}>{value}</p>
+              <p className="font-sans text-xs" style={{ color: "rgba(154,171,184,0.5)" }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* New reading CTA */}
+      <Link
+        href="/reading"
+        className="block w-full text-center py-3.5 rounded-xl font-sans text-sm font-semibold transition-all hover:brightness-110 active:scale-95"
+        style={{ background: "linear-gradient(135deg, #e9c349 0%, #c9a32e 100%)", color: "#0f141b" }}
+      >
+        開始新的占卜 ✦
+      </Link>
+
+      {/* History list */}
+      <div>
+        <h2 className="font-serif text-base font-semibold mb-4" style={{ color: "#e8e8e8" }}>占卜歷史</h2>
+        {sorted.length === 0 ? (
+          <div
+            className="text-center py-12 rounded-2xl font-sans text-sm"
+            style={{ color: "rgba(154,171,184,0.4)", background: "rgba(19,25,32,0.5)", border: "1px solid rgba(233,195,73,0.06)" }}
+          >
+            尚未有占卜記錄
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {sorted.map((r) => (
+              <Link
+                key={r.id}
+                href={`/result/${r.id}`}
+                className="block rounded-xl p-4 transition-all hover:border-[rgba(233,195,73,0.25)]"
+                style={{ background: "rgba(19,25,32,0.6)", border: "1px solid rgba(233,195,73,0.08)" }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-serif text-sm truncate" style={{ color: "#e8e8e8" }}>{r.question}</p>
+                    <p className="font-sans text-xs mt-1" style={{ color: "rgba(154,171,184,0.5)" }}>
+                      {TOPIC_LABELS[r.topic] ?? r.topic} · {new Date(r.createdAt).toLocaleDateString("zh-HK")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {r.isPaid && (
+                      <span className="font-sans text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(233,195,73,0.08)", color: "rgba(233,195,73,0.7)", border: "1px solid rgba(233,195,73,0.15)" }}>
+                        完整版
+                      </span>
+                    )}
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: "rgba(154,171,184,0.3)" }}>chevron_right</span>
+                  </div>
+                </div>
+                {r.freeReading?.headline && (
+                  <p className="font-sans text-xs mt-2 italic truncate" style={{ color: "rgba(154,171,184,0.4)" }}>
+                    「{r.freeReading.headline}」
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page (server) ────────────────────────────────────────────
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
 
-  const history: ReadingResult[] = user.role !== "visitor"
+  // Visitors: no redirect, show beautiful visitor view
+  if (!user) {
+    return (
+      <div className="min-h-screen cosmic-bg text-white">
+        <TopNav />
+        <SideNav />
+        <div className="lg:pl-64 pt-20">
+          <VisitorDashboard />
+        </div>
+      </div>
+    );
+  }
+
+  // Admin / member: show reading history
+  const readings: ReadingResult[] = user.role !== "visitor"
     ? await getReadingsByUser(user.id)
     : [];
 
-  const dailyLimit = user.role === "admin" ? "∞" : user.role === "member" ? "3" : "1";
-  const remaining = user.role === "admin"
-    ? "∞"
-    : String(Math.max(0, parseInt(dailyLimit) - user.dailyUsage));
-
   return (
-    <div
-      className="min-h-screen text-white"
-      style={{ background: "#0f141b" }}
-    >
-      {/* Header */}
-      <nav className="flex justify-between items-center px-6 py-4 border-b border-amber-900/20">
-        <Link href="/" className="text-amber-400 font-serif text-xl font-semibold">
-          ✦ ArcanaPath
-        </Link>
-        <div className="flex gap-4 items-center text-sm font-serif">
-          {user.role === "admin" && (
-            <Link href="/admin" className="text-amber-400 hover:text-amber-300 transition-colors">
-              後台管理
-            </Link>
-          )}
-          <form action="/api/auth/logout" method="POST">
-            <button className="text-amber-600/60 hover:text-amber-500 transition-colors">
-              登出
-            </button>
-          </form>
-        </div>
-      </nav>
-
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        {/* User stats */}
-        <div className="rounded-xl border border-amber-800/30 bg-amber-950/20 p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-amber-200 font-serif font-semibold text-lg">
-                {user.name ?? user.email}
-              </div>
-              <div className="text-amber-600/60 text-xs font-serif capitalize mt-0.5">
-                {user.role === "admin" ? "管理員" : user.role === "member" ? "會員" : "訪客"}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-amber-400 font-serif text-2xl font-semibold">{remaining}</div>
-              <div className="text-amber-600/50 text-xs">今日剩餘</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border border-amber-900/30 bg-black/20 p-3">
-              <div className="text-amber-300 font-serif font-semibold">{user.totalUsage}</div>
-              <div className="text-amber-600/50 text-xs">總占卜次數</div>
-            </div>
-            <div className="rounded-lg border border-amber-900/30 bg-black/20 p-3">
-              <div className="text-amber-300 font-serif font-semibold">{user.dailyUsage}</div>
-              <div className="text-amber-600/50 text-xs">今日占卜</div>
-            </div>
-            <div className="rounded-lg border border-amber-900/30 bg-black/20 p-3">
-              <div className="text-amber-300 font-serif font-semibold">{dailyLimit}</div>
-              <div className="text-amber-600/50 text-xs">每日上限</div>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <Link
-          href="/reading"
-          className="block w-full text-center bg-amber-700 hover:bg-amber-600 text-white font-serif font-semibold py-4 rounded-xl transition-colors mb-6 text-lg"
-        >
-          開始占卜 →
-        </Link>
-
-        {/* History */}
-        <div>
-          <h2 className="text-amber-400 font-serif font-semibold mb-4">占卜歷史</h2>
-          {history.length === 0 ? (
-            <div className="text-center text-amber-600/40 font-serif py-12 border border-amber-900/20 rounded-xl">
-              尚未有占卜記錄
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {history
-                .sort(
-                  (a, b) =>
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime()
-                )
-                .map((r) => (
-                  <Link
-                    key={r.id}
-                    href={`/result/${r.id}`}
-                    className="block rounded-xl border border-amber-800/30 bg-amber-950/20 p-4 hover:border-amber-700/50 transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-amber-200 font-serif text-sm truncate">
-                          {r.question}
-                        </div>
-                        <div className="text-amber-600/50 text-xs mt-1">
-                          {TOPIC_LABELS[r.topic]} ·{" "}
-                          {new Date(r.createdAt).toLocaleDateString("zh-HK")}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {r.isPaid && (
-                          <span className="text-xs bg-amber-800/50 text-amber-300 px-2 py-0.5 rounded font-serif">
-                            完整版
-                          </span>
-                        )}
-                        <span className="text-amber-500/40 text-sm">→</span>
-                      </div>
-                    </div>
-                    {r.freeReading?.headline && (
-                      <div className="text-amber-500/50 text-xs font-serif mt-2 italic truncate">
-                        "{r.freeReading.headline}"
-                      </div>
-                    )}
-                  </Link>
-                ))}
-            </div>
-          )}
-        </div>
+    <div className="min-h-screen cosmic-bg text-white">
+      <TopNav />
+      <SideNav />
+      <div className="lg:pl-64 pt-20">
+        <AdminDashboard readings={readings} userName={user.name ?? user.email} />
       </div>
     </div>
   );
