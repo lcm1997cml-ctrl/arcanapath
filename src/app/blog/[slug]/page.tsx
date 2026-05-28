@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { getBlogArticle, getRelatedArticles, BLOG_ARTICLES } from "@/lib/blog-content";
 import type { BlogSection } from "@/lib/blog-content";
 import TopNav from "@/components/TopNav";
@@ -142,22 +143,55 @@ export default async function BlogArticlePage({ params }: Props) {
         <div
           className="relative px-4 md:px-8 py-16 overflow-hidden"
           style={{
-            background: `linear-gradient(145deg, ${article.gradientFrom} 0%, #0f141b 100%)`,
+            background: article.imageSrc
+              ? undefined
+              : `linear-gradient(145deg, ${article.gradientFrom} 0%, #0f141b 100%)`,
+            minHeight: 280,
             borderBottom: "1px solid rgba(233,195,73,0.08)",
           }}
         >
-          {/* Decorative icon */}
-          <div
-            className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none"
-            aria-hidden
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: 160, color: "#e9c349", fontVariationSettings: "'FILL' 1" }}
+          {/* Real article hero image (if available) */}
+          {article.imageSrc && (
+            <>
+              <Image
+                src={article.imageSrc}
+                alt={article.title}
+                fill
+                className="object-cover object-center"
+                priority
+                sizes="100vw"
+              />
+              {/* Dark overlay for readability */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: "linear-gradient(to right, rgba(9,15,21,0.85) 0%, rgba(9,15,21,0.55) 60%, rgba(9,15,21,0.3) 100%)",
+                }}
+              />
+              {/* Violet tint */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "radial-gradient(ellipse at 80% 50%, rgba(109,91,151,0.15) 0%, transparent 60%)",
+                }}
+              />
+            </>
+          )}
+
+          {/* Decorative icon (shown when no image) */}
+          {!article.imageSrc && (
+            <div
+              className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none"
+              aria-hidden
             >
-              {article.accentIcon}
-            </span>
-          </div>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 160, color: "#e9c349", fontVariationSettings: "'FILL' 1" }}
+              >
+                {article.accentIcon}
+              </span>
+            </div>
+          )}
 
           <div className="relative z-10 max-w-2xl">
             {/* Breadcrumb */}

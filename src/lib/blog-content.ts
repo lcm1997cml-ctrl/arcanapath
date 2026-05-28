@@ -12,6 +12,10 @@ export interface BlogArticle {
   featured?: boolean;
   accentIcon: string;
   gradientFrom: string;
+  /** Production image path under /public — used in card thumbnails and article hero */
+  imageSrc: string;
+  /** Focal point hint for object-position — e.g. "center", "top", "50% 30%" */
+  imagePosition?: string;
   body: BlogSection[];
   relatedSlugs?: string[];
 }
@@ -34,6 +38,8 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     featured: true,
     accentIcon: "favorite",
     gradientFrom: "#1a0a2e",
+    imageSrc: "/images/blog/tarot-card-destiny.webp",
+    imagePosition: "center",
     body: [
       {
         type: "paragraph",
@@ -102,6 +108,8 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     date: "2024年5月14日",
     accentIcon: "rotate_right",
     gradientFrom: "#0a1520",
+    imageSrc: "/images/blog/cosmic-tarot-hand.webp",
+    imagePosition: "center",
     body: [
       {
         type: "paragraph",
@@ -152,6 +160,8 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     date: "2024年5月10日",
     accentIcon: "public",
     gradientFrom: "#0f0a20",
+    imageSrc: "/images/blog/cosmic-third-eye.webp",
+    imagePosition: "center",
     body: [
       {
         type: "paragraph",
@@ -209,6 +219,8 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     date: "2024年5月5日",
     accentIcon: "diamond",
     gradientFrom: "#0f1a14",
+    imageSrc: "/images/blog/mystic-crystal-core.webp",
+    imagePosition: "center",
     body: [
       {
         type: "paragraph",
@@ -271,6 +283,8 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     date: "2024年4月28日",
     accentIcon: "dark_mode",
     gradientFrom: "#0a0f20",
+    imageSrc: "/images/blog/shadow-work-grimoire.webp",
+    imagePosition: "center",
     body: [
       {
         type: "paragraph",

@@ -4,6 +4,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import TopNav from "@/components/TopNav";
 import SideNav from "@/components/SideNav";
@@ -446,34 +447,31 @@ export default function HomePage() {
                 height: 400,
               }}
             >
-              {/* Background image — placeholder gradient */}
+              {/* Background image */}
+              <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110">
+                <Image
+                  src="/images/home/moon-mystery-tarot.webp"
+                  alt="月相神秘塔羅"
+                  fill
+                  className="object-cover object-center"
+                  priority
+                  sizes="(max-width: 768px) 100vw, 66vw"
+                />
+              </div>
+              {/* Subtle purple glow overlay */}
               <div
-                className="absolute inset-0 transition-transform duration-700 group-hover:scale-110"
+                className="absolute inset-0 pointer-events-none"
                 style={{
-                  background: "linear-gradient(135deg, #1b2027 0%, #2d1b4e 40%, #1b0a38 70%, #0b0e14 100%)",
+                  backgroundImage: "radial-gradient(ellipse at 30% 40%, rgba(109,91,151,0.25) 0%, transparent 55%)",
                 }}
               />
-              {/* Purple/gold cosmic texture */}
-              <div
-                className="absolute inset-0 opacity-40"
-                style={{
-                  backgroundImage: "radial-gradient(ellipse at 30% 40%, rgba(109,91,151,0.4) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(233,195,73,0.1) 0%, transparent 50%)",
-                }}
-              />
-              {/* Gradient overlay */}
+              {/* Gradient overlay — darkens bottom for text legibility */}
               <div
                 className="absolute inset-0"
                 style={{
-                  background: "linear-gradient(to top, #0f141b 0%, rgba(15,20,27,0.4) 50%, transparent 100%)",
+                  background: "linear-gradient(to top, #0f141b 0%, rgba(15,20,27,0.55) 45%, transparent 100%)",
                 }}
               />
-              {/* Candles/stars decoration */}
-              <div
-                className="absolute top-8 right-8 opacity-30"
-                style={{ fontSize: 64, lineHeight: 1 }}
-              >
-                ✦
-              </div>
 
               {/* Content */}
               <div className="absolute bottom-0 p-8 space-y-3">

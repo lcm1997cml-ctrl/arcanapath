@@ -4,6 +4,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import TopNav from "@/components/TopNav";
 import SideNav from "@/components/SideNav";
 import { BLOG_ARTICLES } from "@/lib/blog-content";
@@ -18,7 +19,10 @@ const ARTICLES = BLOG_ARTICLES.map((a) => ({
   date: a.date,
   featured: a.featured ?? false,
   gradient: `from-[${a.gradientFrom}] to-[#131920]`,
+  gradientFrom: a.gradientFrom,
   accentIcon: a.accentIcon,
+  imageSrc: a.imageSrc ?? null,
+  imagePosition: a.imagePosition ?? "center",
 }));
 
 const CATEGORIES = ["所有見解", "塔羅基礎", "占星術", "情緒成長", "儀式與手作"];
@@ -27,27 +31,48 @@ const CATEGORIES = ["所有見解", "塔羅基礎", "占星術", "情緒成長",
 function SmallArticleCard({ article }: { article: typeof ARTICLES[0] }) {
   return (
     <article className="glass-card gold-shimmer rounded-lg overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1">
-      {/* Decorative gradient image area */}
-      <div
-        className="tarot-aspect relative overflow-hidden"
-        style={{
-          background: `linear-gradient(145deg, ${article.gradient.replace("from-", "").replace(/\s.*/, "")} 0%, #131920 100%)`,
-          aspectRatio: "16 / 9",
-        }}
-      >
-        <div className="absolute inset-0"
-          style={{
-            background: "radial-gradient(ellipse at 30% 40%, rgba(209,188,255,0.12) 0%, transparent 60%)",
-          }}
-        />
-        <div className="absolute inset-0 flex items-center justify-center opacity-20">
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: 64, color: "#e9c349", fontVariationSettings: "'FILL' 1" }}
-          >
-            {article.accentIcon ?? "auto_awesome"}
-          </span>
-        </div>
+      {/* Image area */}
+      <div className="relative overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+        {article.imageSrc ? (
+          <>
+            <Image
+              src={article.imageSrc}
+              alt={article.title}
+              fill
+              className="object-cover object-center transition-transform duration-700 group-hover:scale-110"
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+            {/* Subtle overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "linear-gradient(to bottom, transparent 50%, rgba(13,18,26,0.6) 100%)",
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(145deg, ${article.gradientFrom} 0%, #131920 100%)`,
+              }}
+            />
+            <div className="absolute inset-0"
+              style={{
+                background: "radial-gradient(ellipse at 30% 40%, rgba(209,188,255,0.12) 0%, transparent 60%)",
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center opacity-20">
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 64, color: "#e9c349", fontVariationSettings: "'FILL' 1" }}
+              >
+                {article.accentIcon ?? "auto_awesome"}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="p-6 flex flex-col flex-grow">
@@ -212,42 +237,74 @@ export default function BlogPage() {
                 className="lg:col-span-2 relative group overflow-hidden glass-card rounded-xl gold-shimmer transition-all duration-500 hover:-translate-y-1"
               >
                 <div className="flex flex-col md:flex-row min-h-[280px]">
-                  {/* Decorative image panel */}
+                  {/* Image panel */}
                   <div
-                    className="md:w-2/5 h-48 md:h-full overflow-hidden relative flex-shrink-0"
-                    style={{
-                      background:
-                        "linear-gradient(145deg, #1a0a2e 0%, #0f141b 60%, #0a1520 100%)",
-                      minHeight: 220,
-                    }}
+                    className="md:w-2/5 h-48 md:h-full overflow-hidden relative flex-shrink-0 group"
+                    style={{ minHeight: 220 }}
                   >
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          "radial-gradient(ellipse at 30% 40%, rgba(209,188,255,0.15) 0%, transparent 65%)",
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div
-                        className="w-24 h-24 rounded-full flex items-center justify-center"
-                        style={{
-                          background: "rgba(233,195,73,0.08)",
-                          border: "1px solid rgba(233,195,73,0.2)",
-                        }}
-                      >
-                        <span
-                          className="material-symbols-outlined"
+                    {featured.imageSrc ? (
+                      <>
+                        <Image
+                          src={featured.imageSrc}
+                          alt={featured.title}
+                          fill
+                          className="object-cover object-center transition-transform duration-700 group-hover:scale-110"
+                          sizes="(max-width: 768px) 100vw, 40vw"
+                        />
+                        <div
+                          className="absolute inset-0 pointer-events-none"
                           style={{
-                            fontSize: 44,
-                            color: "#e9c349",
-                            fontVariationSettings: "'FILL' 1",
+                            background:
+                              "linear-gradient(to right, transparent 60%, rgba(13,18,26,0.8) 100%)",
                           }}
-                        >
-                          favorite
-                        </span>
-                      </div>
-                    </div>
+                        />
+                        {/* Subtle violet glow */}
+                        <div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            background:
+                              "radial-gradient(ellipse at 30% 40%, rgba(109,91,151,0.2) 0%, transparent 60%)",
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background:
+                              "linear-gradient(145deg, #1a0a2e 0%, #0f141b 60%, #0a1520 100%)",
+                          }}
+                        />
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background:
+                              "radial-gradient(ellipse at 30% 40%, rgba(209,188,255,0.15) 0%, transparent 65%)",
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div
+                            className="w-24 h-24 rounded-full flex items-center justify-center"
+                            style={{
+                              background: "rgba(233,195,73,0.08)",
+                              border: "1px solid rgba(233,195,73,0.2)",
+                            }}
+                          >
+                            <span
+                              className="material-symbols-outlined"
+                              style={{
+                                fontSize: 44,
+                                color: "#e9c349",
+                                fontVariationSettings: "'FILL' 1",
+                              }}
+                            >
+                              favorite
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Content */}
