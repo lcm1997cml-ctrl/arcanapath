@@ -8,6 +8,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import Image from "next/image";
 import type { TarotCardData } from "@/types/reading";
 import { getCardImagePath } from "@/lib/tarot/utils";
 
@@ -37,170 +38,59 @@ export interface TarotCardProps {
   glowOnHover?: boolean;
 }
 
-// ─── Starry night card back ───────────────────────────────────
-// Rendered entirely in CSS/SVG — no external image needed.
+// ─── Card back — real card-back image ─────────────────────────
+// GPU-optimised: no SVG stars, no blur filters, no heavy paint.
+// Overlays (border shimmer) are cheap pointer-events-none divs.
 
 function CardBack({ s }: { s: S }) {
-  // We generate a deterministic-looking star field using a repeating SVG pattern.
-  // Multiple layers at different scales give a sense of depth.
-  const starPatternSm = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='3' cy='4' r='0.55' fill='rgba(255,240,180,0.55)'/%3E%3Ccircle cx='14' cy='2' r='0.4' fill='rgba(255,240,180,0.4)'/%3E%3Ccircle cx='20' cy='10' r='0.6' fill='rgba(255,240,180,0.5)'/%3E%3Ccircle cx='7' cy='18' r='0.45' fill='rgba(255,240,180,0.45)'/%3E%3Ccircle cx='18' cy='20' r='0.35' fill='rgba(255,240,180,0.35)'/%3E%3Ccircle cx='11' cy='13' r='0.5' fill='rgba(255,240,180,0.3)'/%3E%3C/svg%3E")`;
-
-  const starPatternLg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='5' cy='8' r='0.9' fill='rgba(255,240,180,0.65)'/%3E%3Ccircle cx='22' cy='3' r='0.7' fill='rgba(255,240,180,0.5)'/%3E%3Ccircle cx='35' cy='18' r='1.0' fill='rgba(255,240,180,0.6)'/%3E%3Ccircle cx='12' cy='30' r='0.75' fill='rgba(255,240,180,0.55)'/%3E%3Ccircle cx='30' cy='33' r='0.85' fill='rgba(255,240,180,0.45)'/%3E%3Ccircle cx='20' cy='22' r='0.5' fill='rgba(255,240,180,0.4)'/%3E%3Ccircle cx='38' cy='7' r='0.6' fill='rgba(255,240,180,0.35)'/%3E%3C/svg%3E")`;
-
   return (
     <div
       className="absolute inset-0 overflow-hidden"
       style={{
         borderRadius: 6,
-        // Deep space gradient — dark indigo at top, near-black at bottom
-        background:
-          "radial-gradient(ellipse at 40% 25%, #1e0e40 0%, #100826 40%, #06020f 100%)",
+        background: "#06020f",       // fallback while image loads
+        willChange: "transform",
+        backfaceVisibility: "hidden",
       }}
     >
-      {/* ── Gold foil outer border ── */}
-      <div
-        className="absolute"
-        style={{
-          inset: 0,
-          borderRadius: 6,
-          // Two-tone gold border: brighter top-left, dimmer bottom-right (foil effect)
-          border: "0px solid transparent",
-          boxShadow:
-            "inset 0 0 0 2px rgba(200,160,40,0.75), inset 0 0 0 3px rgba(100,70,15,0.35)",
-          zIndex: 10,
-          pointerEvents: "none",
-        }}
+      {/* ── Real card-back image ── */}
+      <Image
+        src="/images/tarot/card-back.PNG"
+        alt=""
+        fill
+        sizes={`${s.w}px`}
+        style={{ objectFit: "cover", objectPosition: "center" }}
+        draggable={false}
+        priority={false}
       />
 
-      {/* ── Inner thin gold rule ── */}
-      <div
-        className="absolute"
-        style={{
-          inset: 5,
-          borderRadius: 3,
-          border: "1px solid rgba(180,140,30,0.3)",
-          zIndex: 10,
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* ── Star layer 1: small dense stars ── */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: starPatternSm,
-          backgroundSize: "24px 24px",
-          opacity: 0.85,
-        }}
-      />
-
-      {/* ── Star layer 2: larger, brighter accent stars ── */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: starPatternLg,
-          backgroundSize: "40px 40px",
-          backgroundPosition: "7px 11px",
-          opacity: 0.7,
-        }}
-      />
-
-      {/* ── Nebula / glow cloud ── */}
-      <div
-        className="absolute"
-        style={{
-          inset: "15%",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse at center, rgba(80,40,160,0.18) 0%, transparent 70%)",
-          filter: "blur(6px)",
-        }}
-      />
-
-      {/* ── Center geometric emblem ── */}
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center gap-[2px]"
-        style={{ zIndex: 5 }}
-      >
-        {/* Outer ring of dots */}
-        <div
-          style={{
-            position: "relative",
-            width:  s.symbol * 2.2,
-            height: s.symbol * 2.2,
-          }}
-        >
-          {/* Octagram / two overlapping squares */}
-          <svg
-            width={s.symbol * 2.2}
-            height={s.symbol * 2.2}
-            viewBox="0 0 44 44"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ position: "absolute", inset: 0, opacity: 0.55 }}
-          >
-            {/* Outer circle */}
-            <circle cx="22" cy="22" r="19" stroke="rgba(200,160,40,0.45)" strokeWidth="0.8" />
-            {/* Square 1 */}
-            <rect x="9" y="9" width="26" height="26" stroke="rgba(200,160,40,0.35)" strokeWidth="0.7" transform="rotate(0 22 22)" />
-            {/* Square 2 rotated 45° */}
-            <rect x="9" y="9" width="26" height="26" stroke="rgba(200,160,40,0.3)" strokeWidth="0.7" transform="rotate(45 22 22)" />
-            {/* Inner circle */}
-            <circle cx="22" cy="22" r="6" stroke="rgba(200,160,40,0.4)" strokeWidth="0.7" />
-          </svg>
-
-          {/* Central ✦ glyph */}
-          <div
-            className="absolute inset-0 flex items-center justify-center select-none"
-            style={{
-              fontSize: s.symbol * 0.75,
-              color: "rgba(220,175,50,0.8)",
-              textShadow: "0 0 8px rgba(220,175,50,0.5), 0 0 16px rgba(220,175,50,0.2)",
-              lineHeight: 1,
-            }}
-          >
-            ✦
-          </div>
-        </div>
-
-        {/* Moon phase row */}
-        <div
-          className="select-none"
-          style={{
-            fontSize: s.symbol * 0.38,
-            color: "rgba(200,160,40,0.5)",
-            letterSpacing: "0.25em",
-            lineHeight: 1,
-            marginTop: 2,
-          }}
-        >
-          ☽ ✦ ☾
-        </div>
-      </div>
-
-      {/* ── Corner flourishes ── */}
-      {(["top-[4px] left-[4px]", "top-[4px] right-[4px]", "bottom-[4px] left-[4px]", "bottom-[4px] right-[4px]"] as const).map((pos) => (
-        <div
-          key={pos}
-          className={`absolute ${pos} select-none`}
-          style={{
-            fontSize: s.symbol * 0.28,
-            color: "rgba(200,160,40,0.5)",
-            lineHeight: 1,
-            zIndex: 5,
-          }}
-        >
-          ◆
-        </div>
-      ))}
-
-      {/* ── Subtle shimmer on top ── */}
+      {/* ── Gold foil border overlay (cheap inset shadow, no repaint) ── */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(220,175,50,0.05) 0%, transparent 40%, rgba(220,175,50,0.03) 100%)",
           borderRadius: 6,
+          boxShadow:
+            "inset 0 0 0 2px rgba(200,160,40,0.7), inset 0 0 0 4px rgba(100,70,15,0.2)",
+        }}
+      />
+
+      {/* ── Inner gold rule ── */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          inset: 4,
+          borderRadius: 3,
+          border: "1px solid rgba(180,140,30,0.22)",
+        }}
+      />
+
+      {/* ── Subtle shimmer gradient ── */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          borderRadius: 6,
+          background:
+            "linear-gradient(135deg, rgba(220,175,50,0.07) 0%, transparent 45%, rgba(220,175,50,0.04) 100%)",
         }}
       />
     </div>
@@ -330,32 +220,32 @@ export default function TarotCard({
       onClick={handleClick}
     >
       <div
-        className="relative flex-shrink-0 transition-all duration-200"
+        className="relative flex-shrink-0 transition-transform duration-200"
         style={{
           width:  s.w,
           height: s.h,
           borderRadius: 6,
+          willChange: "transform",
+          backfaceVisibility: "hidden",
           transform: pressing
-            ? "scale(0.93)"
+            ? "scale3d(0.93,0.93,1)"
             : selected
-            ? "scale(1.07) translateY(-5px)"
-            : "scale(1)",
+            ? "scale3d(1.07,1.07,1) translateY(-5px)"
+            : "scale3d(1,1,1)",
           boxShadow: selected
             ? "0 0 0 2px rgba(200,160,40,0.8), 0 10px 28px rgba(0,0,0,0.7)"
             : "0 4px 18px rgba(0,0,0,0.55)",
-          filter: selected
-            ? "drop-shadow(0 0 10px rgba(200,160,40,0.5))"
-            : undefined,
         }}
         onMouseEnter={(e) => {
           if (!clickable || !glowOnHover || selected) return;
-          (e.currentTarget as HTMLDivElement).style.transform = "scale(1.04) translateY(-3px)";
+          // translate3d keeps the hover on the GPU compositor layer
+          (e.currentTarget as HTMLDivElement).style.transform = "scale3d(1.04,1.04,1) translateY(-3px)";
           (e.currentTarget as HTMLDivElement).style.boxShadow =
-            "0 0 0 1.5px rgba(180,140,30,0.55), 0 14px 30px rgba(0,0,0,0.65)";
+            "0 0 0 1.5px rgba(180,140,30,0.55), 0 12px 24px rgba(0,0,0,0.6)";
         }}
         onMouseLeave={(e) => {
           if (!clickable || !glowOnHover || selected) return;
-          (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+          (e.currentTarget as HTMLDivElement).style.transform = "scale3d(1,1,1)";
           (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 18px rgba(0,0,0,0.55)";
         }}
       >

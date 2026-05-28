@@ -6,7 +6,8 @@
 // Design: updated to new ArcanaPath design system (Mockup 1 oracle style)
 // =============================================================
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, memo } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Topic, DrawnCard } from "@/types/reading";
 import { deck, serializeDrawnCards } from "@/lib/tarot/utils";
@@ -30,8 +31,10 @@ const FAN_COUNT  = 26;
 const POSITIONS  = ["過去", "現在", "未來"];
 
 // ─── Shuffle animation ────────────────────────────────────────
+// memo: onDone identity is stable (useCallback), so this component
+// will never re-render from the parent during its own animation.
 
-function ShuffleAnimation({ onDone }: { onDone: () => void }) {
+const ShuffleAnimation = memo(function ShuffleAnimation({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
   const TOTAL = 6;
 
@@ -52,37 +55,49 @@ function ShuffleAnimation({ onDone }: { onDone: () => void }) {
         {done ? "洗牌完成" : "正在洗牌，請保持專注…"}
       </p>
 
-      {/* Card pile */}
+      {/* Card pile — real card-back image, GPU-composited transforms */}
       <div className="relative" style={{ width: 140, height: 110 }}>
         {[0, 1, 2, 3, 4, 5].map((i) => {
-          const offset  = i - 2.5;
-          const rot     = offset * (step % 2 === 0 ? 10 : -8) + step * 3.5;
-          const tx      = offset * 6 + (step % 3 === 0 ? offset * 2 : 0);
-          const ty      = Math.abs(offset) * 1.5;
+          const offset = i - 2.5;
+          const rot    = offset * (step % 2 === 0 ? 10 : -8) + step * 3.5;
+          const tx     = offset * 6 + (step % 3 === 0 ? offset * 2 : 0);
+          const ty     = Math.abs(offset) * 1.5;
           return (
             <div
               key={i}
-              className="absolute rounded-[5px]"
+              className="absolute rounded-[6px] overflow-hidden"
               style={{
                 width: 54,
                 height: 90,
                 left: "50%",
                 top: "50%",
                 transformOrigin: "center 110%",
-                transform: `translateX(calc(-50% + ${tx}px)) translateY(calc(-50% + ${ty}px)) rotate(${rot}deg)`,
+                // translate3d keeps transforms on GPU compositor
+                transform: `translate3d(calc(-50% + ${tx}px), calc(-50% + ${ty}px), 0) rotate(${rot}deg)`,
                 transition: "transform 0.22s ease",
-                background: "linear-gradient(145deg, #1a2232 0%, #131920 100%)",
-                border: "1.5px solid rgba(233,195,73,0.3)",
-                boxShadow: "0 3px 12px rgba(0,0,0,0.6)",
+                // Thin shadow only — heavy shadows repaint on every frame
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
                 zIndex: i,
+                willChange: "transform",
+                backfaceVisibility: "hidden",
+                border: "1.5px solid rgba(233,195,73,0.35)",
               }}
             >
-              <div className="absolute inset-[3px] border border-amber-700/25 rounded-[3px]" />
+              <Image
+                src="/images/tarot/card-back.PNG"
+                alt=""
+                fill
+                sizes="54px"
+                style={{ objectFit: "cover", objectPosition: "center" }}
+                draggable={false}
+                priority={i === 5}
+              />
+              {/* Thin gold border overlay */}
               <div
-                className="absolute inset-0 opacity-25"
+                className="absolute inset-0 pointer-events-none"
                 style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='2' cy='2' r='0.6' fill='rgba(233,195,73,0.6)'/%3E%3Ccircle cx='8' cy='9' r='0.4' fill='rgba(233,195,73,0.4)'/%3E%3Ccircle cx='13' cy='5' r='0.5' fill='rgba(233,195,73,0.5)'/%3E%3C/svg%3E")`,
-                  backgroundSize: "16px 16px",
+                  boxShadow: "inset 0 0 0 1.5px rgba(200,160,40,0.5)",
+                  borderRadius: 6,
                 }}
               />
             </div>
@@ -106,7 +121,7 @@ function ShuffleAnimation({ onDone }: { onDone: () => void }) {
       </div>
     </div>
   );
-}
+});
 
 // ─── Selected cards preview ───────────────────────────────────
 
