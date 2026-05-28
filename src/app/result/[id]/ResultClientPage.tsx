@@ -22,86 +22,6 @@ interface ResultClientPageProps {
   isLoggedIn: boolean;
 }
 
-// ─── Card position labels ─────────────────────────────────────
-const POSITIONS = ["旅程", "當下", "前路"] as const;
-const POSITION_LABELS = ["過去", "現在", "未來"] as const;
-
-// ─── Tarot card visual ────────────────────────────────────────
-function TarotCardDisplay({
-  name,
-  position,
-  posLabel,
-  reversed,
-  index,
-}: {
-  name: string;
-  position: string;
-  posLabel: string;
-  reversed: boolean;
-  index: number;
-}) {
-  const rotations = [-5, 0, 5];
-  const baseRot = rotations[index] ?? 0;
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <span
-        className="font-sans text-xs uppercase tracking-widest"
-        style={{ color: "rgba(154,171,184,0.65)", letterSpacing: "0.15em" }}
-      >
-        {posLabel}
-      </span>
-      <div
-        className="gold-filigree relative rounded-xl flex flex-col items-center justify-end pb-3 transition-all duration-500"
-        style={{
-          width: 88,
-          height: 140,
-          background: "linear-gradient(145deg, #1a2232 0%, #131920 100%)",
-          transform: `rotate(${reversed ? baseRot + 180 : baseRot}deg)`,
-        }}
-      >
-        <div
-          className="absolute inset-0 rounded-xl pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse at 40% 30%, rgba(209,188,255,0.06) 0%, transparent 70%)",
-          }}
-        />
-        <div className="absolute inset-[5px] rounded-lg" style={{ border: "1px solid rgba(233,195,73,0.12)" }} />
-        <span
-          className="font-serif text-center text-xs font-semibold px-2 leading-tight relative z-10"
-          style={{
-            color: "#e9c349",
-            transform: reversed ? "rotate(180deg)" : "none",
-            display: "block",
-          }}
-        >
-          {name}
-        </span>
-        {reversed && (
-          <span
-            className="font-sans text-center relative z-10"
-            style={{
-              fontSize: 9,
-              marginTop: 2,
-              color: "rgba(209,188,255,0.65)",
-              transform: "rotate(180deg)",
-              display: "block",
-            }}
-          >
-            逆位
-          </span>
-        )}
-      </div>
-      <span
-        className="font-sans text-xs"
-        style={{ color: "rgba(154,171,184,0.5)" }}
-      >
-        {position}
-      </span>
-    </div>
-  );
-}
-
 // ─── Main page ────────────────────────────────────────────────
 export default function ResultClientPage({
   id,
@@ -217,12 +137,6 @@ export default function ResultClientPage({
     }
     setTimeout(() => setShareToast(""), 2200);
   }, [shareCopyRich]);
-
-  // Cards from result (result.cards is DrawnCard[])
-  const cards = useMemo(() => {
-    const drawn = result.cards ?? [];
-    return drawn.slice(0, 3) as { card: { name: string; name_zh?: string }; reversed: boolean }[];
-  }, [result]);
 
   const renderShareSection = useCallback(
     (title: string) => (
@@ -393,38 +307,6 @@ export default function ResultClientPage({
           )}
         </div>
       </div>
-
-      {/* ── Three-card spread ────────────────────────────────── */}
-      {cards.length === 3 && (
-        <div className="relative z-10 max-w-md mx-auto px-5 mb-6">
-          <div
-            className="rounded-2xl py-6 px-4"
-            style={{
-              background: "rgba(19,25,32,0.5)",
-              border: "1px solid rgba(233,195,73,0.1)",
-            }}
-          >
-            <p
-              className="font-sans text-xs text-center uppercase tracking-widest mb-5"
-              style={{ color: "rgba(154,171,184,0.5)", letterSpacing: "0.2em" }}
-            >
-              你靈魂嘅鏡像
-            </p>
-            <div className="flex justify-center gap-5">
-              {cards.map((c, i) => (
-                <TarotCardDisplay
-                  key={i}
-                  name={c.card.name_zh ?? c.card.name}
-                  position={POSITIONS[i] ?? `第${i + 1}張`}
-                  posLabel={POSITION_LABELS[i] ?? ""}
-                  reversed={c.reversed}
-                  index={i}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Reading content ──────────────────────────────────── */}
       <div className="relative z-10 max-w-2xl mx-auto px-4 pt-2">

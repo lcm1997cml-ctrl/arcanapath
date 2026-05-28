@@ -33,14 +33,14 @@ const POSITIONS  = ["過去", "現在", "未來"];
 
 function ShuffleAnimation({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
-  const TOTAL = 9;
+  const TOTAL = 6;
 
   useEffect(() => {
     if (step >= TOTAL) {
-      const t = setTimeout(onDone, 700);
+      const t = setTimeout(onDone, 350);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setStep((s) => s + 1), 280);
+    const t = setTimeout(() => setStep((s) => s + 1), 160);
     return () => clearTimeout(t);
   }, [step, onDone, TOTAL]);
 
@@ -288,7 +288,7 @@ export default function ReadingClientPage() {
       if (prev.includes(index)) return prev.filter((i) => i !== index);
       if (prev.length >= 3) return prev;
       const next = [...prev, index];
-      if (next.length === 3) setTimeout(() => setPhase("preview"), 380);
+      if (next.length === 3) setTimeout(() => setPhase("preview"), 200);
       return next;
     });
   }, []);
