@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Topic, DrawnCard } from "@/types/reading";
 import { deck, serializeDrawnCards } from "@/lib/tarot/utils";
 import TarotCard from "@/components/TarotCard";
-import ReadingFan from "@/components/ReadingFan";
+import TarotFan from "@/components/TarotFan";
 import TopNav from "@/components/TopNav";
 import SideNav from "@/components/SideNav";
 
@@ -288,11 +288,13 @@ export default function ReadingClientPage() {
     setSelected((prev) => {
       if (prev.includes(index)) return prev.filter((i) => i !== index);
       if (prev.length >= 3) return prev;
-      const next = [...prev, index];
-      if (next.length === 3) setTimeout(() => setPhase("preview"), 200);
-      return next;
+      return [...prev, index];
     });
   }, []);
+
+  const handleReveal = useCallback(() => {
+    if (selected.length === 3) setPhase("preview");
+  }, [selected]);
 
   const handleSubmit = useCallback(async () => {
     if (drawnCards.length !== 3) return;
@@ -446,35 +448,33 @@ export default function ReadingClientPage() {
 
       <div className="lg:pl-64 pt-20">
 
-      {/* ── Title + step indicator ───────────────────────────── */}
-      <div className="text-center pt-7 pb-2 px-4">
-        <h1 className="font-serif text-xl font-semibold" style={{ color: "#e8e8e8" }}>
-          塔羅占卜
-        </h1>
-        {phase === "select" && (
-          <p className="font-sans text-xs mt-1" style={{ color: "rgba(154,171,184,0.5)" }}>
-            憑感覺，選出三張牌
-          </p>
-        )}
-      </div>
+      {/* ── Title + step indicator (hidden during immersive select phase) ── */}
+      {phase !== "select" && (
+        <>
+          <div className="text-center pt-7 pb-2 px-4">
+            <h1 className="font-serif text-xl font-semibold" style={{ color: "#e8e8e8" }}>
+              塔羅占卜
+            </h1>
+          </div>
 
-      {/* Step dots */}
-      <div className="flex justify-center gap-2 py-4">
-        {phaseOrder.map((_, i) => (
-          <div
-            key={i}
-            className="rounded-full transition-all duration-300"
-            style={{
-              width:      i <= stepIndex ? 28 : 8,
-              height:     6,
-              background: i <= stepIndex ? "#e9c349" : "rgba(233,195,73,0.15)",
-            }}
-          />
-        ))}
-      </div>
+          <div className="flex justify-center gap-2 py-4">
+            {phaseOrder.map((_, i) => (
+              <div
+                key={i}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width:      i <= stepIndex ? 28 : 8,
+                  height:     6,
+                  background: i <= stepIndex ? "#e9c349" : "rgba(233,195,73,0.15)",
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* ── Content ─────────────────────────────────────────── */}
-      <div className="pb-20">
+      <div className={phase === "select" ? "" : "pb-20"}>
 
         {/* INPUT */}
         {phase === "input" && (
@@ -690,31 +690,54 @@ export default function ReadingClientPage() {
 
         {/* SELECT */}
         {phase === "select" && (
-          <div className="flex flex-col items-center gap-4">
-            {/* Selection counter */}
-            <div className="flex gap-3 items-center">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-full transition-all duration-300"
-                  style={{
-                    width:      selected.length > i ? 32 : 20,
-                    height:     10,
-                    background: selected.length > i ? "#e9c349" : "rgba(233,195,73,0.15)",
-                  }}
-                />
-              ))}
-              <span className="font-sans text-xs ml-1" style={{ color: "rgba(154,171,184,0.5)" }}>
-                {selected.length}/3
-              </span>
+          <div className="relative flex flex-col items-center overflow-visible" style={{ minHeight: "calc(100vh - 180px)" }}>
+
+            {/* ── Ambient gold glow ───────────────────────────── */}
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                width: 800, height: 800,
+                top: "40%", left: "50%",
+                transform: "translate(-50%, -50%)",
+                background: "radial-gradient(circle, rgba(233,195,73,0.08) 0%, transparent 70%)",
+                filter: "blur(80px)",
+                borderRadius: "50%",
+              }}
+            />
+
+            {/* ── Title + subtitle + progress bars ────────────── */}
+            <div className="text-center pt-4 pb-0 relative z-20">
+              <h1 className="font-serif text-4xl font-semibold tracking-widest mb-2" style={{ color: "#dee2ec" }}>
+                塔羅占卜
+              </h1>
+              <p className="font-sans text-sm" style={{ color: "rgba(255,255,255,0.38)" }}>
+                憑感覺，選出三張牌
+              </p>
+              <div className="flex items-center justify-center gap-3 mt-5">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="rounded-full transition-all duration-300"
+                    style={{
+                      width: 48,
+                      height: 6,
+                      background: selected.length > i ? "#e9c349" : "rgba(255,255,255,0.1)",
+                      boxShadow: selected.length > i ? "0 0 8px rgba(233,195,73,0.55)" : "none",
+                    }}
+                  />
+                ))}
+                <span
+                  className="ml-1 font-mono text-xs"
+                  style={{ color: "#e9c349" }}
+                >
+                  {selected.length} / 3
+                </span>
+              </div>
             </div>
 
-            {/* Fan */}
-            <div
-              className="w-full overflow-x-auto pt-6 pb-2"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
-              <ReadingFan
+            {/* ── Arc fan ──────────────────────────────────────── */}
+            <div className="relative z-10 w-full">
+              <TarotFan
                 totalCards={FAN_COUNT}
                 selectedIndices={selected}
                 onSelect={handleFanSelect}
@@ -722,9 +745,33 @@ export default function ReadingClientPage() {
               />
             </div>
 
-            <p className="font-sans text-xs" style={{ color: "rgba(154,171,184,0.45)" }}>
-              點擊牌面選擇・再點取消
-            </p>
+            {/* ── 解讀結果 button ───────────────────────────────── */}
+            <div className="pb-10 relative z-30">
+              <button
+                onClick={handleReveal}
+                disabled={selected.length !== 3}
+                className="font-serif text-lg tracking-[0.3em] rounded-lg transition-all duration-500 px-14 py-4"
+                style={{
+                  background: "transparent",
+                  border: "1px solid #e9c349",
+                  color: "#e9c349",
+                  opacity: selected.length === 3 ? 1 : 0.32,
+                  cursor: selected.length === 3 ? "pointer" : "default",
+                  boxShadow: selected.length === 3
+                    ? "0 0 20px rgba(233,195,73,0.15)"
+                    : "none",
+                }}
+              >
+                解讀結果
+                <span
+                  className="block font-sans tracking-normal"
+                  style={{ fontSize: 10, marginTop: 3, opacity: selected.length === 3 ? 0.65 : 0 }}
+                >
+                  Reveal your path
+                </span>
+              </button>
+            </div>
+
           </div>
         )}
 
