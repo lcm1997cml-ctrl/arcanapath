@@ -261,6 +261,7 @@ export default function ReadingClientPage() {
   }, [refreshRemainingFromServer, router, searchParams]);
 
   // Fan state
+  const [submittingMessage, setSubmittingMessage] = useState("牌陣已就緒…");
   const [fanOrder, setFanOrder]   = useState<{ cardIndex: number; reversed: boolean }[]>([]);
   const [selected, setSelected]   = useState<number[]>([]);
 
@@ -296,33 +297,81 @@ export default function ReadingClientPage() {
   const handleSubmit = useCallback(async () => {
     if (drawnCards.length !== 3) return;
     setPhase("submitting");
+    setSubmittingMessage("牌陣已就緒…");
     setError("");
+
     try {
       const res = await fetch("/api/reading", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: question.trim(), topic, cards: serializeDrawnCards(drawnCards) }),
       });
-      const data = await res.json();
-      if (!data.ok) {
-        if (data.unlockRequired) { setShowUnlockModal(true); setPhase("input"); }
+
+      // Non-2xx = JSON error (auth / validation failures)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "發生錯誤，請重試" }));
+        if (data.unlockRequired) { setShowUnlockModal(true); setPhase("input"); return; }
         if (typeof data.remainingFree === "number") {
           setRemainingFreeHint(data.remainingFree);
           try { localStorage.setItem("arcana_remaining_free", String(data.remainingFree)); } catch { /* ignore */ }
         }
         setError(data.error ?? "發生錯誤，請重試");
-        if (!data.unlockRequired) setPhase("preview");
+        setPhase("preview");
         return;
       }
-      if (typeof data.remainingFree === "number") {
-        setRemainingFreeHint(data.remainingFree);
-        try { localStorage.setItem("arcana_remaining_free", String(data.remainingFree)); } catch { /* ignore */ }
+
+      // 2xx = SSE stream
+      if (!res.body) {
+        setError("回應格式錯誤，請重試");
+        setPhase("preview");
+        return;
       }
-      const readingId = data?.id ?? data?.data?.id;
-      if (!readingId) { setError("回傳資料格式錯誤，請重試"); setPhase("preview"); return; }
-      try { localStorage.setItem("arcana_last_reading_id", readingId); } catch { /* ignore */ }
-      setLastReadingId(readingId);
-      router.push(`/result/${readingId}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6)) as {
+              type: string;
+              message?: string;
+              id?: string;
+              remainingFree?: number | null;
+              error?: string;
+              unlockRequired?: boolean;
+            };
+
+            if (data.type === "progress" && data.message) {
+              setSubmittingMessage(data.message);
+            } else if (data.type === "done" && data.id) {
+              if (typeof data.remainingFree === "number") {
+                setRemainingFreeHint(data.remainingFree);
+                try { localStorage.setItem("arcana_remaining_free", String(data.remainingFree)); } catch { /* ignore */ }
+              }
+              try { localStorage.setItem("arcana_last_reading_id", data.id); } catch { /* ignore */ }
+              setLastReadingId(data.id);
+              router.push(`/result/${data.id}`);
+              break outer;
+            } else if (data.type === "error") {
+              if (data.unlockRequired) { setShowUnlockModal(true); setPhase("input"); break outer; }
+              setError(data.error ?? "發生錯誤，請重試");
+              setPhase("preview");
+              break outer;
+            }
+          } catch { /* ignore malformed events */ }
+        }
+      }
     } catch {
       setError("網絡錯誤，請重試");
       setPhase("preview");
@@ -694,14 +743,48 @@ export default function ReadingClientPage() {
 
         {/* SUBMITTING */}
         {phase === "submitting" && (
-          <div className="flex flex-col items-center gap-6 py-20">
-            <div className="text-6xl animate-spin" style={{ animationDuration: "2.2s" }}>☽</div>
-            <p className="font-serif text-lg" style={{ color: "rgba(232,232,232,0.65)" }}>
-              塔羅正在解讀…
-            </p>
-            <p className="font-sans text-sm" style={{ color: "rgba(154,171,184,0.45)" }}>
-              通常需要 10–20 秒
-            </p>
+          <div className="flex flex-col items-center gap-8 py-20">
+            {/* Spinning moon */}
+            <div className="relative">
+              <div
+                className="absolute -inset-4 rounded-full"
+                style={{
+                  background: "radial-gradient(ellipse, rgba(233,195,73,0.12) 0%, transparent 70%)",
+                  filter: "blur(12px)",
+                }}
+              />
+              <div className="text-6xl animate-spin relative z-10" style={{ animationDuration: "2.2s" }}>☽</div>
+            </div>
+
+            {/* Dynamic progress message — fades between states */}
+            <div className="text-center space-y-2">
+              <p
+                key={submittingMessage}
+                className="font-serif text-lg transition-opacity duration-500"
+                style={{ color: "rgba(232,232,232,0.8)" }}
+              >
+                {submittingMessage}
+              </p>
+              <p className="font-sans text-xs" style={{ color: "rgba(154,171,184,0.4)" }}>
+                神諭正在感應你的問題
+              </p>
+            </div>
+
+            {/* Animated progress dots */}
+            <div className="flex gap-2 items-center">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-full"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    background: "rgba(233,195,73,0.5)",
+                    animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

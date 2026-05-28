@@ -78,50 +78,43 @@ function cardLines(cards: DrawnCard[]): string {
 }
 
 function baseOutputSchema() {
-  return `請嚴格按以下 JSON 格式回覆（所有欄位必填）：
+  return `回覆必須是純 JSON，不要 markdown，所有欄位必填：
 {
-  "directAnswer": "【塔羅結論】先直接回答問題，1-2句，明確有判斷",
+  "directAnswer": "1-2句直接回答問題",
   "freeReading": {
-    "headline": "【牌面所說】先一句直接答問題，再補1-2句原因或背景（總長建議2-3句）",
-    "mainAxis": "【整體解讀】完整分析，建議6-9句；必須緊扣問題、交代關鍵矛盾、盲點與目前局勢",
+    "headline": "2-3句：先直接答問題，再補背景原因",
+    "mainAxis": "6-9句整體解讀，緊扣問題核心矛盾與盲點",
     "cardReadings": [
-      { "position": "過去", "cardName": "牌名", "interpretation": "4-6句；講清楚這張牌在『過去位』如何形成現在問題根源" },
-      { "position": "現在", "cardName": "牌名", "interpretation": "4-6句；講清楚當下核心拉扯、對方/環境狀態與風險" },
-      { "position": "未來", "cardName": "牌名", "interpretation": "4-6句；講清楚若維持現況與若作出改變的兩種走向" }
+      { "position": "過去", "cardName": "牌名", "interpretation": "4-6句，過去位如何形成現在問題根源" },
+      { "position": "現在", "cardName": "牌名", "interpretation": "4-6句，當下核心拉扯與風險" },
+      { "position": "未來", "cardName": "牌名", "interpretation": "4-6句，維持現況vs改變的兩種走向" }
     ],
-    "nextStep": "【下一步】2-4句，具體、可執行、有次序，避免口號"
+    "nextStep": "2-4句具體可執行建議，有次序"
   },
-  "coreReminder": "【核心提醒】1-2句，尖銳但不粗俗，點出最應面對的真相",
+  "coreReminder": "1-2句核心真相，尖銳不粗俗",
   "deepReading": {
-    "psychologicalBreakdown": "深層心理或局勢拆解（建議10-14句，付費重點，需有層次）",
-    "hiddenTruth": "牌面背後真相（建議8-12句，包含對方視角與外在因素）",
-    "actionAdvice": "具體行動建議（建議5步，每步1-2句，包含先後次序與風險提示）",
-    "hardQuestion": "最應該面對的核心問題"
+    "psychologicalBreakdown": "深層心理拆解10-14句（付費重點）",
+    "hiddenTruth": "牌面背後真相8-12句，含對方視角",
+    "actionAdvice": "5步具體行動，每步1-2句含風險提示",
+    "hardQuestion": "最應面對的核心問題"
   },
   "timelineReport": {
-    "shortTerm": "1-4週（建議4-6句）",
-    "midTerm": "1-3個月（建議4-6句）",
-    "longTerm": "3個月以上（建議4-6句）"
+    "shortTerm": "1-4週，4-6句",
+    "midTerm": "1-3月，4-6句",
+    "longTerm": "3月以上，4-6句"
   },
   "qaBonus": [
-    { "question": "延伸問題1", "answer": "回答1（3-5句）" },
-    { "question": "延伸問題2", "answer": "回答2（3-5句）" },
-    { "question": "延伸問題3", "answer": "回答3（3-5句）" }
+    { "question": "延伸問題", "answer": "3-5句" },
+    { "question": "延伸問題", "answer": "3-5句" },
+    { "question": "延伸問題", "answer": "3-5句" }
   ]
 }
-
-加長規則（務必遵守）：
-1) 免費可見內容（freeReading）要比一般短答完整，但仍保持可快速閱讀。
-2) 付費區內容（deepReading + timelineReport + qaBonus）必須比免費區明顯更深入，至少達到3-5倍資訊量與分析層次。
-3) 每段都必須連回客人原問題，不可只講牌義翻譯。
-4) 避免與前一次完全相同句式，保持師傅風格下的自然變化。`;
+規則：每段緊扣客人問題；付費區比免費區深入3-5倍；避免空泛正能量；保持師傅風格。`;
 }
 
 // 新增函數：loveReadingPrompt
 export function loveReadingPrompt(question: string, cards: DrawnCard[]): string {
-  return `${TAROT_MASTER_PERSONA}
-
-主題：感情
+  return `主題：感情
 客人問題：${question}
 三張牌：
 ${cardLines(cards)}
@@ -150,9 +143,7 @@ ${baseOutputSchema()}`;
 
 // 新增函數：careerReadingPrompt
 export function careerReadingPrompt(question: string, cards: DrawnCard[]): string {
-  return `${TAROT_MASTER_PERSONA}
-
-主題：事業
+  return `主題：事業
 客人問題：${question}
 三張牌：
 ${cardLines(cards)}
@@ -178,9 +169,7 @@ ${baseOutputSchema()}`;
 
 // 新增函數：moneyReadingPrompt
 export function moneyReadingPrompt(question: string, cards: DrawnCard[]): string {
-  return `${TAROT_MASTER_PERSONA}
-
-主題：財運
+  return `主題：財運
 客人問題：${question}
 三張牌：
 ${cardLines(cards)}
@@ -206,9 +195,7 @@ ${baseOutputSchema()}`;
 
 // 新增函數：lifeReadingPrompt
 export function lifeReadingPrompt(question: string, cards: DrawnCard[]): string {
-  return `${TAROT_MASTER_PERSONA}
-
-主題：人生方向
+  return `主題：人生方向
 客人問題：${question}
 三張牌：
 ${cardLines(cards)}
