@@ -31,37 +31,75 @@ const FAN_COUNT  = 26;
 const POSITIONS  = ["過去", "現在", "未來"];
 
 // ─── Shuffle animation ────────────────────────────────────────
+// ─── Shuffle timing constants ─────────────────────────────────
+// STEP_MS  : how long each shuffle "beat" lasts   (was 160 ms)
+// TOTAL    : total number of beats                 (was 6)
+// DONE_PAUSE: pause on "洗牌完成" before advancing  (was 350 ms)
+//
+// Result: ~34% slower per beat + one extra pass + 0.5 s ritual pause.
+// Total shuffle duration: 7 × 215 ms + 500 ms ≈ 2.0 s  (was ~1.3 s)
+const SHUFFLE_STEP_MS   = 215;
+const SHUFFLE_TOTAL     = 7;
+const SHUFFLE_DONE_PAUSE = 500;
+
+// Card-specific stagger offsets (ms). Gives a "riffle" feel where
+// outer cards lag slightly behind the inner pile.
+const CARD_STAGGER_MS = [0, 14, 28, 20, 10, 5];
+
+// Per-step easing alternates between a light spring (odd steps) and
+// a smooth ease-out (even steps) to mimic real card resistance.
+function shuffleEasing(step: number): string {
+  return step % 2 === 0
+    ? "cubic-bezier(0.25, 0.46, 0.45, 0.94)"   // ease-out: settle
+    : "cubic-bezier(0.34, 1.22, 0.64, 1)";      // light spring: lift
+}
+
 // memo: onDone identity is stable (useCallback), so this component
 // will never re-render from the parent during its own animation.
 
 const ShuffleAnimation = memo(function ShuffleAnimation({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
-  const TOTAL = 6;
 
   useEffect(() => {
-    if (step >= TOTAL) {
-      const t = setTimeout(onDone, 350);
+    if (step >= SHUFFLE_TOTAL) {
+      const t = setTimeout(onDone, SHUFFLE_DONE_PAUSE);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setStep((s) => s + 1), 160);
+    const t = setTimeout(() => setStep((s) => s + 1), SHUFFLE_STEP_MS);
     return () => clearTimeout(t);
-  }, [step, onDone, TOTAL]);
+  }, [step, onDone]);
 
-  const done = step >= TOTAL;
+  const done = step >= SHUFFLE_TOTAL;
 
   return (
     <div className="flex flex-col items-center gap-10 py-8">
-      <p className="font-serif text-lg" style={{ color: done ? "#e9c349" : "rgba(232,232,232,0.65)" }}>
+      <p
+        className="font-serif text-lg transition-colors duration-500"
+        style={{ color: done ? "#e9c349" : "rgba(232,232,232,0.65)" }}
+      >
         {done ? "洗牌完成" : "正在洗牌，請保持專注…"}
       </p>
 
-      {/* Card pile — real card-back image, GPU-composited transforms */}
-      <div className="relative" style={{ width: 140, height: 110 }}>
+      {/* ── Card pile ───────────────────────────────────────────
+          Motion model: each card has a unique phase offset so they
+          move in a staggered "riffle" rather than in unison.
+          Outer cards (high |offset|) spread wider; inner cards
+          stay closer to centre — mimics a real overhand shuffle.
+      */}
+      <div className="relative" style={{ width: 160, height: 120 }}>
         {[0, 1, 2, 3, 4, 5].map((i) => {
-          const offset = i - 2.5;
-          const rot    = offset * (step % 2 === 0 ? 10 : -8) + step * 3.5;
-          const tx     = offset * 6 + (step % 3 === 0 ? offset * 2 : 0);
-          const ty     = Math.abs(offset) * 1.5;
+          const offset = i - 2.5;                           // –2.5 … +2.5
+          const dir    = step % 2 === 0 ? 1 : -1;          // left/right alternation
+          // Rotation: base spread + direction flip + slow drift per step
+          const rot    = offset * dir * 13 + step * 2.2;
+          // Horizontal spread: outer cards fly wider, direction alternates
+          const tx     = offset * 9 + dir * (i % 2 === 0 ? 11 : -7);
+          // Vertical: outer cards arc slightly higher
+          const ty     = Math.abs(offset) * 2 + (step % 2) * (i % 3);
+
+          const easing   = shuffleEasing(step);
+          const staggerMs = CARD_STAGGER_MS[i] ?? 0;
+
           return (
             <div
               key={i}
@@ -72,11 +110,10 @@ const ShuffleAnimation = memo(function ShuffleAnimation({ onDone }: { onDone: ()
                 left: "50%",
                 top: "50%",
                 transformOrigin: "center 110%",
-                // translate3d keeps transforms on GPU compositor
                 transform: `translate3d(calc(-50% + ${tx}px), calc(-50% + ${ty}px), 0) rotate(${rot}deg)`,
-                transition: "transform 0.22s ease",
-                // Thin shadow only — heavy shadows repaint on every frame
-                boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                // Per-card easing + stagger makes the riffle feel hand-dealt
+                transition: `transform 0.28s ${easing} ${staggerMs}ms`,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.45)",
                 zIndex: i,
                 willChange: "transform",
                 backfaceVisibility: "hidden",
@@ -92,7 +129,7 @@ const ShuffleAnimation = memo(function ShuffleAnimation({ onDone }: { onDone: ()
                 draggable={false}
                 priority={i === 5}
               />
-              {/* Thin gold border overlay */}
+              {/* Thin gold inset border */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
@@ -105,9 +142,9 @@ const ShuffleAnimation = memo(function ShuffleAnimation({ onDone }: { onDone: ()
         })}
       </div>
 
-      {/* Progress dots */}
+      {/* Progress dots — count matches new SHUFFLE_TOTAL */}
       <div className="flex gap-1.5 items-center">
-        {Array.from({ length: TOTAL }).map((_, i) => (
+        {Array.from({ length: SHUFFLE_TOTAL }).map((_, i) => (
           <div
             key={i}
             className="rounded-full transition-all duration-200"
