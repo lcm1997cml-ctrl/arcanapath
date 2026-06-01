@@ -415,6 +415,98 @@ export async function getVisitorRemainingFree(visitorId: string): Promise<number
   return Math.max(0, Number(row.free_limit ?? 0) - Number(row.usage_count ?? 0));
 }
 
+/**
+ * Grant plan credits to a visitor (e.g. HK$39 buys 3 readings — 1 already
+ * used for the current reading, so caller passes credits=2 for the remainder).
+ * Safe fallback: if plan_credits column is missing, logs and returns silently.
+ */
+export async function addVisitorPlanCredits(
+  visitorId: string,
+  credits: number
+): Promise<void> {
+  if (credits <= 0) return;
+  const normalizedVisitorId = visitorId.trim();
+  const supabase = getSupabaseAdmin();
+
+  try {
+    const row = await getOrCreateVisitorUsage(normalizedVisitorId);
+    const current = Math.max(0, Number(row.plan_credits ?? 0));
+    const next = current + credits;
+
+    const { error } = await supabase
+      .from("visitor_usage")
+      .update({ plan_credits: next })
+      .eq("id", row.id);
+
+    if (error) {
+      const msg = String((error as any)?.message ?? "").toLowerCase();
+      const missingColumn = (error as any)?.code === "42703" || msg.includes("column") || msg.includes("schema cache");
+      if (missingColumn) {
+        console.warn("[addVisitorPlanCredits] plan_credits column missing — skipping", { visitorId: normalizedVisitorId.slice(0, 6) + "…" });
+        return;
+      }
+      throw error;
+    }
+
+    console.log("[addVisitorPlanCredits] credits granted", {
+      visitorId: normalizedVisitorId.slice(0, 6) + "…",
+      before: current,
+      added: credits,
+      after: next,
+    });
+  } catch (err) {
+    // Do not let credit-granting errors crash the webhook — the reading is
+    // already marked paid; extra credits are bonus.
+    console.error("[addVisitorPlanCredits] error (non-fatal)", err);
+  }
+}
+
+/**
+ * Grant a visitor unlimited plan access for `days` days (e.g. HK$88 = 30 days).
+ * Sets plan_type="unlimited" and plan_expires_at=now+days.
+ * Safe fallback: if new columns are missing, logs and returns silently.
+ */
+export async function setVisitorUnlimitedPlan(
+  visitorId: string,
+  days: number
+): Promise<void> {
+  if (days <= 0) return;
+  const normalizedVisitorId = visitorId.trim();
+  const supabase = getSupabaseAdmin();
+
+  try {
+    const row = await getOrCreateVisitorUsage(normalizedVisitorId);
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+    // Try with new columns first
+    const { error } = await supabase
+      .from("visitor_usage")
+      .update({ plan_type: "unlimited", plan_expires_at: expiresAt })
+      .eq("id", row.id);
+
+    if (error) {
+      const msg = String((error as any)?.message ?? "").toLowerCase();
+      const missingColumn = (error as any)?.code === "42703" || msg.includes("column") || msg.includes("schema cache");
+      if (missingColumn) {
+        console.warn("[setVisitorUnlimitedPlan] plan_type/plan_expires_at columns missing — skipping", {
+          visitorId: normalizedVisitorId.slice(0, 6) + "…",
+        });
+        return;
+      }
+      throw error;
+    }
+
+    console.log("[setVisitorUnlimitedPlan] unlimited plan granted", {
+      visitorId: normalizedVisitorId.slice(0, 6) + "…",
+      days,
+      expiresAt,
+    });
+  } catch (err) {
+    // Non-fatal: reading is already marked paid; unlimited grant is a bonus.
+    console.error("[setVisitorUnlimitedPlan] error (non-fatal)", err);
+  }
+}
+
 export async function addLeadFreeCredits(email: string, credits: number): Promise<LeadRow> {
   const lead = await getOrCreateLeadByEmail(email);
   const before = Number(lead.free_limit ?? 0);

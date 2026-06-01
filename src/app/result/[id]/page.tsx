@@ -66,11 +66,17 @@ export default async function ResultPage({ params, searchParams }: Props) {
   const storedPlan = (rawResult as any)?.paidPlan as "19" | "39" | "88" | undefined;
   const isPaidInDb = !!rawResult.isPaid;
   const paidPlan = storedPlan;
+  // isPaidQuery: user just returned from a successful Stripe checkout.
+  // The DB flag may not be set yet because the webhook fires asynchronously.
+  // We trust the signed Stripe redirect URL and unlock immediately so users
+  // are never stuck on the paywall right after paying.
   const isPaidQuery = !!normalizedQueryPlan && isPaidFlag;
 
   const fullByPolicy = !policy.showPaywall;
   let accountPremium = false;
-  if (!fullByPolicy && !isPaidInDb) {
+  // Only run the premium-access check if the DB doesn't already show paid
+  // and no Stripe redirect is present — avoids a wasted DB round-trip.
+  if (!fullByPolicy && !isPaidInDb && !isPaidQuery) {
     const cookieStore = await cookies();
     const visitorId = cookieStore.get("arcana_visitor_id")?.value?.trim() ?? "";
     const restoredEmail = cookieStore.get("arcana_lead_email")?.value?.trim() ?? "";
@@ -79,9 +85,20 @@ export default async function ResultPage({ params, searchParams }: Props) {
       accountPremium = consume.ok;
     }
   }
-  const unlockDeep = fullByPolicy || accountPremium || (isPaidInDb && (paidPlan === "19" || paidPlan === "39" || paidPlan === "88"));
-  const unlockTimeline = fullByPolicy || accountPremium || (isPaidInDb && (paidPlan === "39" || paidPlan === "88"));
-  const unlockQa = fullByPolicy || accountPremium || (isPaidInDb && paidPlan === "88");
+
+  // Plan-level unlock rules (applies to both DB and query-param paths):
+  //   "19" → deepReading only
+  //   "39" → deepReading + timelineReport
+  //   "88" → everything
+  const effectivePlan = normalizedQueryPlan ?? paidPlan;
+  const effectivePaid = isPaidInDb || isPaidQuery;
+
+  const unlockDeep = fullByPolicy || accountPremium ||
+    (effectivePaid && (effectivePlan === "19" || effectivePlan === "39" || effectivePlan === "88"));
+  const unlockTimeline = fullByPolicy || accountPremium ||
+    (effectivePaid && (effectivePlan === "39" || effectivePlan === "88"));
+  const unlockQa = fullByPolicy || accountPremium ||
+    (effectivePaid && effectivePlan === "88");
   const isUnlocked = fullByPolicy || (unlockDeep && unlockTimeline && unlockQa);
 
   const result = fullByPolicy

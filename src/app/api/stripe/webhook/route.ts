@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { addVisitorFreeCredits, updateReadingPaid } from "@/lib/store";
+import {
+  addVisitorFreeCredits,
+  addVisitorPlanCredits,
+  setVisitorUnlimitedPlan,
+  updateReadingPaid,
+} from "@/lib/store";
 
 export const runtime = "nodejs";
 
@@ -61,7 +66,25 @@ export async function POST(req: NextRequest) {
     }
 
     await updateReadingPaid(readingId, plan as "19" | "39" | "88");
-    console.log("[stripe webhook] premium update success");
+    console.log("[stripe webhook] premium update success", { readingId, plan });
+
+    // Grant visitor-level plan credits for multi-reading plans.
+    // These are non-fatal: if the visitor row is missing the new columns the
+    // helper logs a warning and returns silently.
+    const visitorId = typeof meta.visitorId === "string" ? meta.visitorId.trim() : "";
+    if (visitorId) {
+      if (plan === "39") {
+        // HK$39 = 3 readings total. 1 is the current reading (already paid above).
+        // Grant 2 additional plan credits so future readings are unlocked.
+        await addVisitorPlanCredits(visitorId, 2);
+      } else if (plan === "88") {
+        // HK$88 = 30-day unlimited access.
+        await setVisitorUnlimitedPlan(visitorId, 30);
+      }
+    } else {
+      console.warn("[stripe webhook] reading_unlock has no visitorId in metadata — plan credits skipped", { readingId, plan });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[stripe webhook] update failed", error);
