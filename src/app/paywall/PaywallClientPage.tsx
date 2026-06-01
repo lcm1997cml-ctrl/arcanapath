@@ -331,6 +331,38 @@ export default function PaywallClientPage() {
           </p>
         </div>
 
+        {/* ── No readingId notice ──────────────────────────── */}
+        {!readingId && (
+          <div
+            className="rounded-2xl p-5 flex items-start gap-3"
+            style={{
+              background: "rgba(233,195,73,0.05)",
+              border: "1px solid rgba(233,195,73,0.22)",
+            }}
+          >
+            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>✨</span>
+            <div>
+              <p className="font-serif text-sm font-semibold mb-1" style={{ color: "#e9c349" }}>
+                請先完成一次占卜
+              </p>
+              <p className="font-sans text-xs leading-relaxed" style={{ color: "rgba(154,171,184,0.85)" }}>
+                解鎖完整解讀需要綁定你的占卜結果。點擊下方按鈕開始你的免費占卜，完成後即可解鎖。
+              </p>
+              <Link
+                href="/reading"
+                className="inline-block mt-3 font-sans text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:brightness-110"
+                style={{
+                  background: "rgba(233,195,73,0.12)",
+                  border: "1px solid rgba(233,195,73,0.28)",
+                  color: "#e9c349",
+                }}
+              >
+                立即開始免費占卜 →
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* ── What you unlock ─────────────────────────────── */}
         <div
           className="rounded-2xl p-5 space-y-2.5"
