@@ -2,7 +2,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getReading } from "@/lib/store";
+import { cache } from "react";
+import { getReading as getReadingRaw } from "@/lib/store";
+
+const getReading = cache(async (id: string) => getReadingRaw(id));
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +22,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `免費塔羅占卜結果｜ArcanaPath`,
     description: `免費三張牌塔羅占卜與 AI 解讀：${q}`,
     alternates: { canonical: `${appUrl}/r/${id}` },
+    // Shared personal readings stay out of Google (privacy + thin content);
+    // links still work and still pass link equity to the site.
+    robots: { index: false, follow: true },
+    openGraph: {
+      title: "我的 AI 塔羅占卜結果｜ArcanaPath",
+      description: `三張牌塔羅解讀：${q}`,
+      url: `${appUrl}/r/${id}`,
+      type: "article",
+    },
   };
 }
 
@@ -190,7 +202,7 @@ export default async function PublicSharePage({ params }: Props) {
             查看完整解讀
           </Link>
           <p className="text-center font-sans text-xs" style={{ color: "rgba(154,171,184,0.35)" }}>
-            42,000+ 人已透過 ArcanaPath 獲得靈性指引
+            免費三張牌塔羅 · AI 即時解讀 · 無需註冊
           </p>
         </div>
 

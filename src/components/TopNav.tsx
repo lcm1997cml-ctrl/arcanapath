@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { href: "/reading", label: "占卜" },
   { href: "/dashboard", label: "紀錄" },
   { href: "/paywall", label: "高級版" },
+  { href: "/tarot-card-meaning", label: "牌義" },
   { href: "/blog", label: "神諭博客" },
 ];
 

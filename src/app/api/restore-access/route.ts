@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { isValidLeadEmail, normalizeLeadEmail, restoreAccessByEmailForVisitor } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,13 @@ export async function POST(req: NextRequest) {
     maxAge: 60 * 60 * 24 * 365,
     path: "/",
   });
+  // Slow down email enumeration of paid plans.
+  if (!rateLimit(`restore:ip:${getClientIp(req)}`, 8, 10 * 60 * 1000)) {
+    return NextResponse.json(
+      { ok: false, error: "嘗試次數太多，請稍後再試。", code: "RATE_LIMITED" },
+      { status: 429 }
+    );
+  }
   try {
     const body = (await req.json().catch(() => ({}))) as { email?: string };
     const raw = typeof body.email === "string" ? body.email.trim() : "";

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { claimEmailBonusForVisitor, isValidLeadEmail, normalizeLeadEmail } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,15 @@ export async function POST(req: NextRequest) {
   try {
     let visitorId = req.cookies.get(VISITOR_COOKIE)?.value ?? "";
     if (!visitorId) visitorId = nanoid(18);
+
+    // Each new email = +3 free AI readings, so cap claims per IP / visitor.
+    const ip = getClientIp(req);
+    if (!rateLimit(`email-bonus:ip:${ip}`, 5, 24 * 60 * 60 * 1000) || !rateLimit(`email-bonus:v:${visitorId}`, 2, 24 * 60 * 60 * 1000)) {
+      return NextResponse.json(
+        { ok: false, error: "今日已達領取上限，明天再來吧。", code: "RATE_LIMITED" },
+        { status: 429 }
+      );
+    }
 
     const body = (await req.json().catch(() => ({}))) as { email?: string };
     const raw = typeof body.email === "string" ? body.email.trim() : "";

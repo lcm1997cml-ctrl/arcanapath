@@ -2,3 +2,13 @@ node_modules
 .next
 .env.local
 .env
+
+# macOS
+.DS_Store
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Local Claude Code preview config
+.claude/launch.json
