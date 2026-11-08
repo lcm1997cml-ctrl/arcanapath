@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/reading",   icon: "auto_awesome",  label: "每日一抽" },
   { href: "/spreads",   icon: "grid_view",      label: "牌陣" },
+  { href: "/tarot-card-meaning", icon: "style", label: "塔羅牌意思" },
   { href: "/journal",   icon: "auto_stories",   label: "靈魂日記" },
   { href: "/paywall",   icon: "auto_fix_high",  label: "商店" },
 ];

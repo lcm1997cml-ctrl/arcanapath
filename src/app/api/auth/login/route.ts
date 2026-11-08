@@ -1,8 +1,12 @@
 // src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { authenticateAdmin, createAdminSessionToken } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`login:ip:${getClientIp(req)}`, 5, 15 * 60 * 1000)) {
+    return NextResponse.json({ ok: false, error: "嘗試次數太多，請 15 分鐘後再試" }, { status: 429 });
+  }
   try {
     const { email, password } = await req.json();
     if (!email || !password) {
@@ -35,6 +39,7 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (err) {
+    console.error("[/api/auth/login]", err);
     return NextResponse.json({ ok: false, error: "伺服器錯誤" }, { status: 500 });
   }
 }

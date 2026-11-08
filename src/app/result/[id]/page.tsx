@@ -8,13 +8,14 @@
 //  - Admin / paid users see normal bottom nav instead
 // =============================================================
 
-import React from "react";
+import React, { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { consumePremiumAccessForView, getReading } from "@/lib/store";
-import { getCurrentUser, getRolePolicy } from "@/lib/auth";
+import { getReading } from "@/lib/store";
+import { getCurrentUser } from "@/lib/auth";
 import { stripPaidContent } from "@/lib/reading/normalize";
+import { resolveReadingAccess } from "@/lib/payments/access";
 import { TOPIC_LABELS } from "@/types/reading";
 import ResultClientPage from "./ResultClientPage";
 
@@ -22,20 +23,27 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ paid?: string; plan?: string; planId?: string }>;
+  searchParams: Promise<{ paid?: string; plan?: string; planId?: string; session_id?: string }>;
 }
+
+// generateMetadata + page share one DB read per request.
+const getReadingCached = cache(async (id: string) => getReading(id));
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const result = await getReading(id);
-  const q = (result?.question ?? "塔羅牌解讀").replace(/\s+/g, " ").trim().slice(0, 80);
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://arcanapath.com").replace(/\/$/, "");
+  let question = "";
+  try {
+    question = (await getReadingCached(id))?.question ?? "";
+  } catch {
+    /* metadata must never crash the page */
+  }
+  const q = (question || "塔羅牌解讀").replace(/\s+/g, " ").trim().slice(0, 60);
   return {
     title: `AI塔羅牌解讀｜${q}`,
-    description: "免費三張牌塔羅占卜結果，包含塔羅牌解析與 AI 塔羅解讀。",
-    alternates: {
-      canonical: `${appUrl}/tarot-reading/${id}`,
-    },
+    description: "ArcanaPath 三張牌塔羅占卜結果：過去、現在、未來牌陣與 AI 塔羅解讀。",
+    // Personal readings: keep out of search results (privacy + thin content).
+    robots: { index: false, follow: true },
+    alternates: { canonical: `/result/${id}` },
   };
 }
 
@@ -44,108 +52,43 @@ export default async function ResultPage({ params, searchParams }: Props) {
   const query = await searchParams;
 
   // ── Fetch ──────────────────────────────────────────────────
-  const rawResult = await getReading(id);
+  const rawResult = await getReadingCached(id);
   if (!rawResult) notFound();
 
-  // ── Auth / paywall ─────────────────────────────────────────
-  const user     = await getCurrentUser();
-  const policy   = getRolePolicy(user);
-  const isPaidFlag = query?.paid === "1" || query?.paid === "true";
-  const queryPlan = isPaidFlag ? (query?.plan ?? query?.planId) : undefined;
-  const normalizedQueryPlan =
-    queryPlan === "19" || queryPlan === "39" || queryPlan === "88"
-      ? queryPlan
-      : queryPlan === "starter"
-      ? "19"
-      : queryPlan === "insight"
-      ? "39"
-      : queryPlan === "master"
-      ? "88"
-      : undefined;
+  // ── Entitlement (server-verified only) ─────────────────────
+  // ?paid=true&plan=… is NOT trusted any more: anyone could type it.
+  // Payment is confirmed via DB flag or Stripe session_id verification.
+  const user = await getCurrentUser();
+  const cookieStore = await cookies();
+  const access = await resolveReadingAccess({
+    reading: rawResult,
+    isAdmin: user?.role === "admin",
+    visitorId: cookieStore.get("arcana_visitor_id")?.value,
+    restoredEmail: cookieStore.get("arcana_lead_email")?.value,
+    stripeSessionId: typeof query?.session_id === "string" ? query.session_id : undefined,
+  });
 
-  const storedPlan = (rawResult as any)?.paidPlan as "19" | "39" | "88" | undefined;
-  const isPaidInDb = !!rawResult.isPaid;
-  const paidPlan = storedPlan;
-  // isPaidQuery: user just returned from a successful Stripe checkout.
-  // The DB flag may not be set yet because the webhook fires asynchronously.
-  // We trust the signed Stripe redirect URL and unlock immediately so users
-  // are never stuck on the paywall right after paying.
-  const isPaidQuery = !!normalizedQueryPlan && isPaidFlag;
+  // Any paid plan unlocks the whole report (matches pricing copy: HK$19
+  // includes timeline + Q&A; HK$39/88 "包含所有單次解鎖功能").
+  const isUnlocked = access.unlocked;
+  const paidPlan = access.plan ?? ((rawResult as any)?.paidPlan as string | undefined);
 
-  const fullByPolicy = !policy.showPaywall;
-  let accountPremium = false;
-  // Only run the premium-access check if the DB doesn't already show paid
-  // and no Stripe redirect is present — avoids a wasted DB round-trip.
-  if (!fullByPolicy && !isPaidInDb && !isPaidQuery) {
-    const cookieStore = await cookies();
-    const visitorId = cookieStore.get("arcana_visitor_id")?.value?.trim() ?? "";
-    const restoredEmail = cookieStore.get("arcana_lead_email")?.value?.trim() ?? "";
-    if (visitorId) {
-      const consume = await consumePremiumAccessForView(visitorId, restoredEmail || undefined);
-      accountPremium = consume.ok;
-    }
-  }
-
-  // Plan-level unlock rules (applies to both DB and query-param paths):
-  //   "19" → deepReading only
-  //   "39" → deepReading + timelineReport
-  //   "88" → everything
-  const effectivePlan = normalizedQueryPlan ?? paidPlan;
-  const effectivePaid = isPaidInDb || isPaidQuery;
-
-  const unlockDeep = fullByPolicy || accountPremium ||
-    (effectivePaid && (effectivePlan === "19" || effectivePlan === "39" || effectivePlan === "88"));
-  const unlockTimeline = fullByPolicy || accountPremium ||
-    (effectivePaid && (effectivePlan === "39" || effectivePlan === "88"));
-  const unlockQa = fullByPolicy || accountPremium ||
-    (effectivePaid && effectivePlan === "88");
-  const isUnlocked = fullByPolicy || (unlockDeep && unlockTimeline && unlockQa);
-
-  const result = fullByPolicy
-    ? rawResult
-    : {
-        ...stripPaidContent(rawResult as any),
-        deepReading: unlockDeep ? rawResult.deepReading : null,
-        timelineReport: unlockTimeline ? rawResult.timelineReport : null,
-        qaBonus: unlockQa ? rawResult.qaBonus : [],
-      };
+  const result = isUnlocked
+    ? { ...rawResult, isPaid: rawResult.isPaid || access.justPaid || access.unlocked }
+    : stripPaidContent(rawResult as any);
   const topicLabel = TOPIC_LABELS[result.topic] ?? result.topic;
   const dateStr    = new Date(result.createdAt).toLocaleDateString("zh-HK", {
     year: "numeric", month: "long", day: "numeric",
   });
-  const seoH1 = `AI塔羅牌解讀｜${result.question}`;
-  const seoSummary = String(
-    result.freeReading?.mainAxis ?? result.freeReading?.headline ?? result.freeReading?.nextStep ?? "免費三張牌塔羅占卜結果。"
-  )
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 240);
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: "AI塔羅牌解讀",
-    description: "免費三張牌塔羅占卜結果",
-    author: {
-      "@type": "Organization",
-      name: "ArcanaPath",
-    },
-  };
-
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <section className="sr-only">
-        <h1>{seoH1}</h1>
-        <h2>三張牌塔羅分析</h2>
-        <p>{seoSummary}</p>
-      </section>
       <ResultClientPage
         id={id}
         result={result as any}
         topicLabel={topicLabel}
         dateStr={dateStr}
-        isPaidQuery={isPaidQuery}
-        paidPlan={normalizedQueryPlan ?? paidPlan}
+        isPaidQuery={access.justPaid}
+        paidPlan={paidPlan}
         isUnlocked={isUnlocked}
         userRole={user?.role}
         isLoggedIn={!!user}

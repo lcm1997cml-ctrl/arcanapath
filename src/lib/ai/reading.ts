@@ -46,9 +46,16 @@ const TAROT_MASTER_PERSONA = `你是一名有15年經驗的塔羅占卜師，長
 - 必須先直接回答問題，再做分析
 - 回覆必須是純 JSON，不要 markdown。`;
 
+// OpenRouter requires provider-prefixed model IDs ("openai/gpt-4o-mini").
+// Same model/cost as before; override with OPENROUTER_MODEL (not a secret).
+const AI_MODEL = process.env.OPENROUTER_MODEL?.trim() || "openai/gpt-4o-mini";
+
 const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY || "missing-openrouter-key",
+  // Two attempts x 25 s stay inside the route maxDuration (60 s).
+  timeout: 25_000,
+  maxRetries: 0, // retry handled in generateReading (also covers bad JSON)
 });
 
 function includesAny(text: string, words: string[]): boolean {
@@ -341,19 +348,40 @@ async function callOpenAI(prompt: string): Promise<Record<string, unknown>> {
     { role: "user" as const, content: prompt },
   ];
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages,
-    temperature: 0.85,
-    max_tokens: 1800,
-    headers: {
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "",
-      "X-Title": "ArcanaPath",
+  const completion = await client.chat.completions.create(
+    {
+      model: AI_MODEL,
+      messages,
+      temperature: 0.85,
+      // The schema asks for ~3k Chinese characters; 1800 tokens truncated the
+      // JSON and silently fell back to the canned mock. Billing is per token
+      // actually generated, so a higher ceiling doesn't raise normal cost.
+      max_tokens: 4000,
+      response_format: { type: "json_object" },
     },
-  } as any);
+    {
+      headers: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "",
+        "X-Title": "ArcanaPath",
+      },
+    }
+  );
 
-  const raw = completion.choices?.[0]?.message?.content ?? "{}";
+  const choice = completion.choices?.[0];
+  const usage = completion.usage;
+  console.log("[AI] completion", {
+    model: AI_MODEL,
+    finish: choice?.finish_reason,
+    prompt_tokens: usage?.prompt_tokens,
+    completion_tokens: usage?.completion_tokens,
+  });
+  if (choice?.finish_reason === "length") {
+    throw new Error("AI response truncated (finish_reason=length)");
+  }
+
+  const raw = choice?.message?.content ?? "";
   const clean = raw.replace(/```json|```/g, "").trim();
+  if (!clean) throw new Error("AI returned empty content");
   return JSON.parse(clean) as Record<string, unknown>;
 }
 
@@ -406,7 +434,7 @@ export async function generateReading(
   const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
   const useMock = !hasOpenRouterKey || process.env.USE_MOCK_AI === "true";
   const { type, prompt, templateName } = selectPrompt(question, cards);
-  console.log("[AI] using model gpt-4o-mini");
+  console.log("[AI] using model", useMock ? "mock" : AI_MODEL);
   console.log("QUESTION TYPE:", type);
   console.log("PROMPT TEMPLATE:", templateName);
   if (!hasOpenRouterKey) {
@@ -414,11 +442,28 @@ export async function generateReading(
   }
 
   let raw: Record<string, unknown>;
-  try {
-    raw = useMock ? mockByType(question, cards, type) : await callOpenAI(prompt);
-  } catch (err) {
-    console.error("[ai/reading] falling back to mock:", err);
+  if (useMock) {
     raw = mockByType(question, cards, type);
+  } else {
+    try {
+      raw = await callOpenAI(prompt);
+    } catch (err) {
+      console.error("[ai/reading] first attempt failed, retrying once:", err);
+      try {
+        raw = await callOpenAI(prompt);
+      } catch (err2) {
+        console.error("[ai/reading] AI failed:", err2);
+        // Previously a canned mock was saved as the user's real reading
+        // (and could be sold as the paid report). Now the route refunds the
+        // usage and shows a friendly retry message. Opt back in with
+        // AI_FALLBACK_TO_MOCK=true if ever needed.
+        if (process.env.AI_FALLBACK_TO_MOCK === "true") {
+          raw = mockByType(question, cards, type);
+        } else {
+          throw err2;
+        }
+      }
+    }
   }
 
   // coreReminder is intentionally merged into nextStep for current UI schema compatibility.

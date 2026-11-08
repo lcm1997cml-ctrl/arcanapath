@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import {
-  addVisitorFreeCredits,
-  addVisitorPlanCredits,
-  setVisitorUnlimitedPlan,
-  updateReadingPaid,
-} from "@/lib/store";
+import { fulfillCheckoutSession } from "@/lib/payments/fulfill";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secretKey || !webhookSecret) {
+    console.error("[stripe webhook] env missing: STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET");
     return NextResponse.json({ ok: false, error: "Stripe webhook env missing" }, { status: 500 });
   }
 
@@ -33,60 +30,33 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    console.log("[stripe webhook] event received", { type: event.type });
+    console.log("[stripe webhook] event received", { type: event.type, id: event.id });
 
-    if (event.type !== "checkout.session.completed") {
+    // `async_payment_succeeded` covers delayed payment methods; card payments
+    // arrive as `completed` with payment_status="paid".
+    if (
+      event.type !== "checkout.session.completed" &&
+      event.type !== "checkout.session.async_payment_succeeded"
+    ) {
       return NextResponse.json({ ok: true });
     }
 
     const session = event.data.object as Stripe.Checkout.Session;
-    const meta = session.metadata ?? {};
+    const result = await fulfillCheckoutSession(stripe, session.id, "webhook");
 
-    if (meta.checkoutKind === "reading_credits") {
-      const visitorId = typeof meta.visitorId === "string" ? meta.visitorId.trim() : "";
-      if (!visitorId) {
-        console.error("[stripe webhook] reading credits failed", { reason: "missing visitorId" });
-        return NextResponse.json({ ok: false, error: "missing visitorId" }, { status: 400 });
+    if (!result.ok) {
+      // 'unpaid' is expected for async methods on `completed` — acknowledge so
+      // Stripe stops retrying; fulfilment happens on async_payment_succeeded.
+      if (result.reason === "unpaid" || result.reason === "unknown_kind") {
+        return NextResponse.json({ ok: true, skipped: result.reason });
       }
-      await addVisitorFreeCredits(visitorId, 3);
-      console.log("[stripe webhook] reading credits +3 success", { visitorId: visitorId.slice(0, 6) + "…" });
-      return NextResponse.json({ ok: true });
-    }
-
-    const readingId = meta.readingId;
-    const plan = meta.plan;
-
-    if (!readingId) {
-      console.error("[stripe webhook] update failed", { reason: "missing readingId" });
-      return NextResponse.json({ ok: false, error: "missing readingId in metadata" }, { status: 400 });
-    }
-    if (plan !== "19" && plan !== "39" && plan !== "88") {
-      console.error("[stripe webhook] update failed", { reason: "invalid plan", plan });
-      return NextResponse.json({ ok: false, error: "invalid plan in metadata" }, { status: 400 });
-    }
-
-    await updateReadingPaid(readingId, plan as "19" | "39" | "88");
-    console.log("[stripe webhook] premium update success", { readingId, plan });
-
-    // Grant visitor-level plan credits for multi-reading plans.
-    // These are non-fatal: if the visitor row is missing the new columns the
-    // helper logs a warning and returns silently.
-    const visitorId = typeof meta.visitorId === "string" ? meta.visitorId.trim() : "";
-    if (visitorId) {
-      if (plan === "39") {
-        // HK$39 = 3 readings total. 1 is the current reading (already paid above).
-        // Grant 2 additional plan credits so future readings are unlocked.
-        await addVisitorPlanCredits(visitorId, 2);
-      } else if (plan === "88") {
-        // HK$88 = 30-day unlimited access.
-        await setVisitorUnlimitedPlan(visitorId, 30);
-      }
-    } else {
-      console.warn("[stripe webhook] reading_unlock has no visitorId in metadata — plan credits skipped", { readingId, plan });
+      console.error("[stripe webhook] fulfilment rejected", { reason: result.reason, sessionId: session.id });
+      return NextResponse.json({ ok: false, error: result.reason }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    // 500 → Stripe retries; fulfilment is idempotent so retries are safe.
     console.error("[stripe webhook] update failed", error);
     return NextResponse.json({ ok: false, error: "Webhook processing failed" }, { status: 500 });
   }

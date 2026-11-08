@@ -253,7 +253,11 @@ export default function ReadingClientPage() {
   const searchParams = useSearchParams();
   const [phase,     setPhase]     = useState<Phase>("input");
   const [question,  setQuestion]  = useState(searchParams.get("q") ?? "");
-  const [topic,     setTopic]     = useState<Topic>("love");
+  // ?topic=love|career|wealth|life (used by SEO landing pages); default love.
+  const [topic,     setTopic]     = useState<Topic>(() => {
+    const t = searchParams.get("topic");
+    return t === "love" || t === "career" || t === "wealth" || t === "life" ? t : "love";
+  });
   const [error,     setError]     = useState("");
   const [focused,   setFocused]   = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -279,15 +283,19 @@ export default function ReadingClientPage() {
   }, []);
 
   const refreshRemainingFromServer = useCallback(async (retries = 0) => {
+    let succeeded = false;
     try {
       const res = await fetch("/api/visitor-remaining", { method: "GET", cache: "no-store" });
       const data = await res.json();
       if (data?.ok && typeof data.remainingFreeCount === "number") {
         setRemainingFreeHint(data.remainingFreeCount);
         try { localStorage.setItem("arcana_remaining_free", String(data.remainingFreeCount)); } catch { /* ignore */ }
+        succeeded = true;
       }
     } catch { /* ignore */ }
-    if (retries > 0) {
+    // Previously this retried even after a successful response, causing two
+    // unnecessary Supabase requests whenever the reading page opened.
+    if (!succeeded && retries > 0) {
       await new Promise((r) => setTimeout(r, 450));
       await refreshRemainingFromServer(retries - 1);
     }
@@ -385,6 +393,7 @@ export default function ReadingClientPage() {
       const decoder = new TextDecoder();
       let buffer = "";
 
+      let finished = false;
       outer: while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -415,9 +424,11 @@ export default function ReadingClientPage() {
               }
               try { localStorage.setItem("arcana_last_reading_id", data.id); } catch { /* ignore */ }
               setLastReadingId(data.id);
+              finished = true;
               router.push(`/result/${data.id}`);
               break outer;
             } else if (data.type === "error") {
+              finished = true;
               if (data.unlockRequired) { setShowUnlockModal(true); setPhase("input"); break outer; }
               setError(data.error ?? "發生錯誤，請重試");
               setPhase("preview");
@@ -426,8 +437,13 @@ export default function ReadingClientPage() {
           } catch { /* ignore malformed events */ }
         }
       }
+      if (!finished) {
+        // Connection dropped / function timed out before a done/error event.
+        setError("星象訊號暫時不穩定，請稍後再試。");
+        setPhase("preview");
+      }
     } catch {
-      setError("網絡錯誤，請重試");
+      setError("網絡連線不穩定，請檢查網絡後再試。");
       setPhase("preview");
     }
   }, [drawnCards, question, topic, router]);
@@ -479,7 +495,7 @@ export default function ReadingClientPage() {
         setRemainingFreeHint(data.remainingFreeCount);
         try { localStorage.setItem("arcana_remaining_free", String(data.remainingFreeCount)); } catch { /* ignore */ }
       }
-      setToast(data?.message ?? (data?.restored ? "已恢復可用權限" : "此 email 目前沒有可恢復內容"));
+      setToast(data?.message ?? data?.error ?? (data?.restored ? "已恢復可用權限" : "此 email 目前沒有可恢復內容"));
       if (data?.restored) { setRestoreEmail(""); await refreshRemainingFromServer(1); router.refresh(); }
     } catch { setToast("網絡錯誤，請重試"); }
     finally { setRestoreLoading(false); }

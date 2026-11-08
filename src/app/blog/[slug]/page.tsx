@@ -19,10 +19,12 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = getBlogArticle(slug);
-  if (!article) return { title: "文章不存在 | ArcanaPath" };
+  if (!article) return { title: "文章不存在", robots: { index: false } };
   return {
-    title: `${article.title} | ArcanaPath 神諭博客`,
+    title: { absolute: `${article.title}｜ArcanaPath 神諭博客` },
     description: article.excerpt,
+    alternates: { canonical: `/blog/${slug}` },
+    openGraph: { title: article.title, description: article.excerpt, type: "article", url: `/blog/${slug}` },
   };
 }
 

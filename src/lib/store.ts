@@ -921,3 +921,142 @@ export async function restoreAccessByEmailForVisitor(
     },
   };
 }
+
+// ═════════════════════════════════════════════════════════════
+// Entitlement hardening helpers (no schema change; all fall back safely)
+// ═════════════════════════════════════════════════════════════
+
+type PaidPlan = "19" | "39" | "88";
+
+function isMissingColumnError(err: unknown): boolean {
+  const e = err as { code?: string; message?: string } | null;
+  const msg = String(e?.message ?? "").toLowerCase();
+  return e?.code === "42703" || msg.includes("column") || msg.includes("schema cache");
+}
+
+/**
+ * Atomically flip a reading from unpaid → paid.
+ * Returns true only for the caller that performed the flip, so callers can
+ * use it as a lightweight idempotency lock (duplicate webhooks, refreshes).
+ */
+export async function markReadingPaidIfUnpaid(readingId: string, plan: PaidPlan): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("readings")
+    .update({ is_paid: true, paid_plan: plan })
+    .eq("id", readingId)
+    .eq("is_paid", false)
+    .select("id");
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+/** Current paid state of a reading (null when not found). */
+export async function getReadingPaidState(
+  readingId: string
+): Promise<{ isPaid: boolean; paidPlan: PaidPlan | null } | null> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("readings")
+    .select("id,is_paid,paid_plan")
+    .eq("id", readingId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { isPaid: !!(data as any).is_paid, paidPlan: ((data as any).paid_plan ?? null) as PaidPlan | null };
+}
+
+/**
+ * Reserve one free reading BEFORE calling the AI (optimistic concurrency).
+ * Only one of several parallel requests can move usage_count from n → n+1,
+ * so a visitor can no longer fire 5 parallel requests on a 1-reading quota.
+ * Returns the reserved usage_count, or null if another request won the race.
+ */
+export async function reserveVisitorUsage(row: { id: string; usage_count: number }): Promise<number | null> {
+  const supabase = getSupabaseAdmin();
+  const current = Number(row.usage_count ?? 0);
+  const next = current + 1;
+  const { data, error } = await supabase
+    .from("visitor_usage")
+    .update({ usage_count: next })
+    .eq("id", row.id)
+    .eq("usage_count", current)
+    .select("id");
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0 ? next : null;
+}
+
+/** Give back a reservation when the AI / save failed. Best effort, never throws. */
+export async function refundVisitorUsage(row: { id: string }, reservedCount: number): Promise<void> {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from("visitor_usage")
+      .update({ usage_count: Math.max(0, reservedCount - 1) })
+      .eq("id", row.id)
+      .eq("usage_count", reservedCount);
+    if (error) console.error("[refundVisitorUsage] failed", error);
+  } catch (err) {
+    console.error("[refundVisitorUsage] failed", err);
+  }
+}
+
+/**
+ * Unlock a reading using the visitor's account-level plan (HK$39 credits or
+ * HK$88 unlimited). The reading is marked paid FIRST; a credit is consumed
+ * only by the request that actually flipped it. Previously every refresh of
+ * the result page consumed another credit and the reading stayed locked.
+ */
+export async function unlockReadingWithAccountPlan(
+  readingId: string,
+  visitorId: string,
+  email?: string
+): Promise<boolean> {
+  const access = await hasPremiumAccess(visitorId, email);
+  if (!access.hasAccess) return false;
+
+  const plan: PaidPlan = access.mode === "unlimited" ? "88" : "39";
+  const flipped = await markReadingPaidIfUnpaid(readingId, plan);
+  if (!flipped) return true; // already paid (e.g. concurrent request) — nothing to consume
+
+  if (access.mode === "credits") {
+    try {
+      await consumePremiumAccessForView(visitorId, email);
+    } catch (err) {
+      console.error("[unlockReadingWithAccountPlan] credit consume failed (reading already unlocked)", err);
+    }
+  }
+  return true;
+}
+
+/**
+ * Mirror a paid plan onto the purchaser's email in `leads`, so "Restore Access"
+ * by email works on another device / after cookies are cleared.
+ * Non-fatal: missing columns or errors are logged and ignored.
+ */
+export async function grantLeadPlan(email: string, plan: PaidPlan): Promise<void> {
+  if (plan === "19") return; // single unlock is bound to the reading itself
+  if (!isValidLeadEmail(email)) return;
+  try {
+    const lead = await getOrCreateLeadByEmail(email);
+    const supabase = getSupabaseAdmin();
+    const payload =
+      plan === "39"
+        ? { plan_credits: Math.max(0, Number(lead.plan_credits ?? 0)) + 2 }
+        : {
+            plan_type: "unlimited",
+            plan_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          };
+    const { error } = await supabase.from("leads").update(payload).eq("id", lead.id);
+    if (error) {
+      if (isMissingColumnError(error)) {
+        console.warn("[grantLeadPlan] leads plan columns missing — run LEADS_PLAN_COLUMNS_SQL to enable restore for paid plans");
+        return;
+      }
+      throw error;
+    }
+    console.log("[grantLeadPlan] granted", { plan, lead: lead.id });
+  } catch (err) {
+    console.error("[grantLeadPlan] error (non-fatal)", err);
+  }
+}

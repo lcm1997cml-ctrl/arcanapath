@@ -2,6 +2,18 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let supabaseAdmin: SupabaseClient | null = null;
 
+/**
+ * True when a request could not reach Supabase at all (for example an old
+ * project URL left in Vercel). Keep this separate from PostgREST/schema
+ * errors so routes can return a useful temporary-unavailable response.
+ */
+export function isSupabaseConnectivityError(error: unknown): boolean {
+  const message = String((error as { message?: unknown })?.message ?? error).toLowerCase();
+  const details = String((error as { details?: unknown })?.details ?? "").toLowerCase();
+  const text = `${message}\n${details}`;
+  return text.includes("enotfound") || text.includes("econnrefused") || text.includes("etimedout") || text.includes("fetch failed");
+}
+
 export const READINGS_TABLE_SQL = `
 create table if not exists public.readings (
   id text primary key,
@@ -119,11 +131,22 @@ create table if not exists public.lead_email_bonus (
 export function getSupabaseAdmin(): SupabaseClient {
   if (supabaseAdmin) return supabaseAdmin;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
     throw new Error("Supabase env missing: NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  // A malformed environment variable otherwise surfaces later as the opaque
+  // `TypeError: fetch failed` seen in Vercel logs.
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".supabase.co")) {
+      throw new Error("invalid Supabase host");
+    }
+  } catch {
+    throw new Error("Supabase env invalid: NEXT_PUBLIC_SUPABASE_URL must be an https://*.supabase.co URL");
   }
 
   supabaseAdmin = createClient(url, serviceRoleKey, {

@@ -1,17 +1,18 @@
 // src/app/api/result/[id]/route.ts
+// Legacy JSON endpoint (no current client caller). Kept for backward
+// compatibility; uses the same server-verified entitlement as /result/[id].
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
-import { consumePremiumAccessForView, getReading } from "@/lib/store";
+import { getReading } from "@/lib/store";
 import { getCurrentUser } from "@/lib/auth";
-import { getUsageLimits } from "@/lib/auth";
+import { stripPaidContent } from "@/lib/reading/normalize";
+import { resolveReadingAccess } from "@/lib/payments/access";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const VISITOR_COOKIE = "arcana_visitor_id";
-    const LEAD_EMAIL_COOKIE = "arcana_lead_email";
     const { id } = await params;
     const result = await getReading(id);
 
@@ -20,40 +21,19 @@ export async function GET(
     }
 
     const user = await getCurrentUser();
-    const limits = getUsageLimits(user);
+    const access = await resolveReadingAccess({
+      reading: result,
+      isAdmin: user?.role === "admin",
+      visitorId: req.cookies.get("arcana_visitor_id")?.value,
+      restoredEmail: req.cookies.get("arcana_lead_email")?.value,
+      stripeSessionId: req.nextUrl.searchParams.get("session_id") ?? undefined,
+    });
 
-    const paidPlan = (result as any)?.paidPlan as "19" | "39" | "88" | undefined;
-    const isPaidInDb = !!result.isPaid;
-
-    // If user is admin, return full result
-    if (!limits.showPaywall) {
-      return NextResponse.json({ ok: true, data: result });
-    }
-
-    let accountPremium = false;
-    if (!isPaidInDb) {
-      const visitorId = req.cookies.get(VISITOR_COOKIE)?.value?.trim() ?? "";
-      const restoredEmail = req.cookies.get(LEAD_EMAIL_COOKIE)?.value?.trim() ?? "";
-      if (visitorId) {
-        const consume = await consumePremiumAccessForView(visitorId, restoredEmail || undefined);
-        accountPremium = consume.ok;
-      }
-    }
-
-    const unlockDeep = accountPremium || (isPaidInDb && (paidPlan === "19" || paidPlan === "39" || paidPlan === "88"));
-    const unlockTimeline = accountPremium || (isPaidInDb && (paidPlan === "39" || paidPlan === "88"));
-    const unlockQa = accountPremium || (isPaidInDb && paidPlan === "88");
-
-    const freeResult = {
-      ...result,
-      deepReading: unlockDeep ? result.deepReading : undefined,
-      timelineReport: unlockTimeline ? result.timelineReport : undefined,
-      qaBonus: unlockQa ? result.qaBonus : undefined,
-    };
-
-    return NextResponse.json({ ok: true, data: freeResult });
+    const data = access.unlocked ? { ...result, isPaid: true } : stripPaidContent(result as any);
+    const { userId: _omit, ...publicData } = data as any;
+    return NextResponse.json({ ok: true, data: publicData, unlocked: access.unlocked });
   } catch (err) {
     console.error("[/api/result]", err);
-    return NextResponse.json({ ok: false, error: "伺服器錯誤" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "暫時未能載入結果，請稍後再試" }, { status: 500 });
   }
 }
