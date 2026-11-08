@@ -34,6 +34,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       images: [{ url: getCardImagePath(card.image), alt: `${card.name_zh}塔羅牌` }],
     },
+    twitter: {
+      card: "summary_large_image",
+      title: `${card.name_zh}塔羅牌意思｜ArcanaPath`,
+      description,
+      images: [getCardImagePath(card.image)],
+    },
   };
 }
 
